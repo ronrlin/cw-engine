@@ -13,13 +13,13 @@ def hello():
     """Return a friendly HTTP greeting."""
     return 'Hello World!'
 
-@app.route('/contract')
+@app.route('/contract', methods=['GET', 'POST'])
 def contract():
 	"""Retrieve all contracts for a user."""
 	if request.method == 'GET':
 		return 'List of contracts for this user'
 	elif request.method == 'POST':
-		return	'Upload and process a new contract'
+		return	'Upload and process a new contract '
 	else:
 		return 'An error has occured'
 
@@ -59,7 +59,6 @@ def create_user():
 def page_not_found(e):
 	"""Return a custom 404 error."""
 	return 'Sorry, Nothing at this URL.', 404
-
 
 @app.errorhandler(500)
 def application_error(e):
