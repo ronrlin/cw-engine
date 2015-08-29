@@ -6,11 +6,15 @@
 # TODO: Enter your application id below. If you have signed up
 # using cloud.google.com/console use the "project id" for your application
 # id.
-application: your-application-id-here
+application: firstly-1039
 version: 1
 runtime: python27
 api_version: 1
 threadsafe: yes
+vm: true
+
+vm_settings:
+  apt_get_install: python-numpy python-scipy python-matplotlib
 
 # Handlers define how to route requests to your application.
 handlers:
