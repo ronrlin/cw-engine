@@ -38,6 +38,21 @@ class AgreementSchema(object):
 		"""
 		return self.provisions
 
+	def list_provisions(self):
+		"""
+		Returns a list of all possible provisions that can be identified.
+		Or read all the files in /train
+		"""
+		tuples = [
+			("confidential_information", "train/train_confidential_information"),
+			("nonconfidential_information", "train/train_nonconfidential_information"),
+			("obligation_receiving_party", "train/train_obligation_of_receiving_party"),
+			("time_period", "train/train_time_period"),
+			("waiver", "train/train_waiver"),
+			("severability", "train/train_severability"),
+		]
+		return(tuples)
+
 	def get_concepts(self):
 		"""	
 		Returns a list of tuples which correspond to the concepts expected in this 
@@ -105,6 +120,7 @@ def init():
 	}
 
 	config['concepts'] = {
+		'time_period': 'term_defined, term_non_defined'		
 	}
 
 	with open(SCHEMA_PATH + 'nondisclosure.ini', 'w') as configfile:
