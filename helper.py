@@ -145,6 +145,12 @@ class WiserDatabase(object):
       print("one (1) new record created: " + result.inserted_id)
       return result.inserted_id
 
+   def update_record(self, filename, parameters):
+      """ """
+      parameters['filename'] = filename
+      result = self.collection.replace_one({'filename' : filename}, parameters)
+      return result
+
    def get_contract(self, contract_id):
       """ Return a dict for a contract """
       try:
@@ -191,10 +197,11 @@ def testing():
    print("look for a valid contract id")
    result = datastore.get_contract('55e0a296711b77608bdda709')
    print(result)
+
    if isinstance(result,dict):
       print("result is a dict.\n")
    else:
-      print("result is NOT a dict.\n")
+      print("result is not a dict.\n")
 
    print("look for an invalid contract id")
    result = datastore.get_contract('1')
@@ -202,7 +209,7 @@ def testing():
    if isinstance(result,dict):
       print("result is a dict.\n")
    else:
-      print("result is NOT a dict.\n")
+      print("result is not a dict.\n")
 
    print("insert a dummy record.")
    saved_id = datastore.save_contract("This is some really long text that would typically be found in a legal contract.", "nondisclosure")
@@ -222,10 +229,10 @@ def testing():
    print("test fetch_by_category")
    records = datastore.fetch_by_category('nondisclosure')
    for r in records:
-      print(r['category'])
-      print(r['filename'])
+      print("%s - %s" % r['category'], r['filename'])
 
-   print("\n\n")
+   print("\n")
+
    from structure import AgreementSchema
    provisioner = AgreementSchema()
    provisioner.load_schema('nondisclosure')
