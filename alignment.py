@@ -5,6 +5,7 @@ from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 from sklearn import svm
 
 import nltk
+from nltk.tokenize import word_tokenize
 import os
 from structure import AgreementSchema
 
@@ -101,8 +102,74 @@ class Alignment(object):
         results = self.cll.predict(test_vec)
         return list(zip(content, list(results)))
 
+    def continguous_normalize(self, tupleized):
+        provision_types = [e[1] for e in tupleized]
+        provision_text = [e[0] for e in tupleized]
+        contig = []
+        conttypes = []
+        returnlist = []
+        maxlen = len(provision_types)
+        contigctr = 0
+        contig.append(contigctr)
+        conttypes.append(provision_types[0])
+        for i, val in enumerate(provision_types):
+            if (i < maxlen - 1):
+                if (val == provision_types[i+1]):
+                    #they are contig
+                    pass
+                else: 
+                    contigctr += 1
+                    contig.append(contigctr)
+                    conttypes.append(provision_types[i+1])
+
+        trackr = dict()
+        for p in provision_types:
+            trackr[p] = list()
+
+        for i, thistype in enumerate(provision_types):
+            trackr[thistype].append(i)
+
+        m=[]
+        ll = []
+        newdict = (trackr)
+        nn = set(conttypes)
+        for n in nn:
+            print(n)
+            ids = trackr[n]
+            for i in ids:
+                if not ll: #if ll is empty
+                    ll.append(i)
+                else: 
+                    if i == ll[-1]+1:
+                        ll.append(i)
+                    else:
+                        m.append(ll)
+                        ll = []
+                        ll.append(i)        
+            if len(ids) == 1 or ll:
+                m.append(ll)
+                newdict[n] = m
+                ll = []
+                m = []
+        #{'nondisclosure': [[3, 4, 5], [7, 8]], 'intro': [[0, 1, 2]], 'confidential': [[6]]}   
+        ll = []
+        ctr = 0
+        for nn in conttypes:
+            print("let's sort %s " % nn)        
+            combolists = newdict[nn]
+            comboprovs = combolists.pop(0)
+            combo = ""
+            for c in comboprovs:
+                combo = combo + " " + provision_text[c]
+            this_tuple = (combo, nn)
+            ll.append(this_tuple)
+        return ll
+
     def tokenize(self, content):
-        """ """
+        """ 
+        :param content: is a string that is to be tokenized
+        return list of strings
+        """
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         return tokenizer.tokenize(content)
 
@@ -167,6 +234,25 @@ def testing():
     #    for chunk in nltk.ne_chunk(nltk.pos_tag(nltk.word_tokenize(sent))):
     #        if hasattr(chunk, 'label'):
     #            print(chunk.label(), ' '.join(c[0] for c in chunk.leaves()))
+
+def testr():
+    filename = "nda-0000-0014.txt"
+    print("obtain a corpus...")
+    from classifier import build_corpus
+    corpus = build_corpus()
+
+    schema = AgreementSchema()
+    schema.load_schema('nondisclosure')
+    aligner = Alignment(schema=schema)
+    doc = corpus.raw(filename)
+    paras = aligner.tokenize(doc)
+    aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
+    
+    tupleized = aligner.continguous_normalize(aligned_provisions)
+    print(tupleized)
+    return tupleized
+
+
 
 """
 Bypass main
