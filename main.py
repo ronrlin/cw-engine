@@ -67,6 +67,7 @@ def contract():
 				contract_data = d['text']
 				# Analyze the contract
 				agreement_type = classifier.classify_data(contract_data)
+				print("The uploaded agreement was classified as a %s agreement." % agreement_type)
 				# Add contract_data to the datastore
 				contract_id = datastore.save_contract(contract_data, agreement_type)
 				# Return a contract_id 
@@ -98,6 +99,7 @@ def handle_contract(contract_id=None):
 		aligner = Alignment(schema=schema)
 		paras = aligner.tokenize(agreement_text)
 		aligned_provisions = aligner.align(paras)
+		aligned_provisions = aligner.contiguous_normalize(paras)
 		detail = aligner.get_detail(aligned_provisions)
 
 		# Create the JSON response to the browser
