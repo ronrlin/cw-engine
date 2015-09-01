@@ -1,7 +1,6 @@
 #!/usr/bin/python
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from bson.objectid import ObjectId
 import bson
 
 """
@@ -47,8 +46,18 @@ def create_contract_group_db():
    print(client.database_names())
    db = client['wiser_db']
    collection = db['contract_group']
-   collection.insert_one({ 'agreement_type' : 'nondisclosure', 'group-similarity-score' : 0 })
+   # create a document for each agreement_type
+   agreement_types = ['nondisclosure','convertible','indenture','revolving_credit', 'business_loan','bridge_loan']
+   for thistype in agreement_types:
+      collection.insert_one({ 'agreement_type' : thistype, 'group-similarity-score' : 0 })
    print("created 'contract_group' collection...")
+
+def clear_contract_group_db():
+   """ Empty the contract_group_info collection """
+   client = MongoClient('localhost', 27017)
+   client['wiser_db'].drop_collection('contract_group')
+   print("drop 'contract_group' collection...")
+   client.close()
 
 def create_provision_group_db():
    """ Create the 'provision_group' db """
@@ -181,6 +190,12 @@ class WiserDatabase(object):
    def get_contract_group(self, agreement_type):
       """ Return a dict that represents a contract_group and all its calculated properties """
       result = self.contract_group.find_one({ 'agreement_type' : agreement_type })
+      return result
+
+   def update_contract_group(self, agreement_type, info):
+      """ Update a dict that represents a contract_group and all its calculated properties """
+      print("called update contract group")
+      result = self.contract_group.update_one({'agreement_type' : agreement_type}, {'$set' : info}, False)
       return result
 
    def get_provision_group(self, provision_name):

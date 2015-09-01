@@ -1,14 +1,67 @@
 #!/usr/bin/python
-from helper import WiserDatabase
-from structure import AgreementSchema
-from alignment import Alignment
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from scipy.spatial.distance import cosine
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 from helper import WiserDatabase
 from structure import AgreementSchema
 from alignment import Alignment
+
+"""
+CorpusStatistics(corpus)
+AgreementStatistics(tupleized)
+
+The idea is to create instances of the objects above, which write data to the datastore.
+
+function compute(...)
+"""
+
+class CorpusStatistics(object):
+	""" """
+	def __init__(self, corpus):
+		self.corpus = corpus
+
+	def hello(self):
+		print("hello")
+
+	def calculate_similarity(self, category=None):
+		""" 
+		Calculates a global doc-to-doc similarity average for a corpus of interest.
+		Similarity may be computed relative to reference subset of type 'category'.
+
+		:params category: string that represents a category
+
+		Returns the average similarity across documents.
+		"""
+		# load in the corpus and look the docs
+		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids(category)]
+		# vectorize the docs in the corpus
+		vect = TfidfVectorizer(min_df=1)
+		tfidf = vect.fit_transform(docs)
+		matrix = (tfidf * tfidf.T).A
+		similarity_avg = sum(matrix[0]) / len(matrix[0])
+		return similarity_avg
+
+	def calculate_complexity(self, category=None):
+		"""
+		Calculates a global doc-to-doc complexity average for a corpus of interest.
+		complexity may be computed relative to reference subset of type 'category'.
+
+		:params category: string that represents a category
+
+		Returns the average complexity across documents(category).
+		"""
+		import numpy as np
+		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids(category)]
+		values = []
+		for text in docs:
+			character_count = len(text)
+			word_count = len(word_tokenize(text))
+			sent_count = len(sent_tokenize(text))
+			gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
+			values.append(gulpease)
+		return np.mean(values)
 
 class AgreementStatistics(object):
 	""" """
@@ -16,6 +69,14 @@ class AgreementStatistics(object):
 		""" """
 		self.tupleized = tupleized
 		self.raw = raw
+		self.output = None
+
+	def get_output(self):
+		""" 
+		This function builds the document that will be kept in the proper datastore.
+		Returns a dict that represents statistics about an agreement.
+		"""
+		return self.output
 
 	def calculate_stats(self):
 		""" """
@@ -34,12 +95,13 @@ class AgreementStatistics(object):
 			parameters["has_" + _type] = True
 			parameters[_type + "_gulpease"] = self.calculate_complexity(_block)
 
+		self.output = parameters
 		return parameters
 
 	def calculate_complexity(self, text):
 		""" 
 		Function that computes complexity.
-		:param text: is a string 
+		:param text: string 
 		Returns a score from 0 to 100
 		"""
 		character_count = len(text)
@@ -48,19 +110,29 @@ class AgreementStatistics(object):
 		gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
 		return gulpease
 
-	def calculate_similarity(self, a, b):
-		print("calculate cosine similarity...")
-		similarity=cosine(a, b)
-		print(similarity)
-		return similarity
-
-# Need an algorithm to collapse contiguous blocks!!  argghhh
+	def calculate_similarity(self, text, corpus):
+		""" 
+		This SHOULD compare a given text to a reference corpus.
+		:param text: string of text
+		:param b: string of text
+		"""
+		docs = [corpus.raw(fileid) for fileid in corpus.fileids()]
+		docs.append(text)
+		# vectorize the docs in the corpus
+		vect = TfidfVectorizer(min_df=1)
+		tfidf = vect.fit_transform(docs)
+		matrix = (tfidf * tfidf.T).A
+		similarity_avg = sum(matrix[0]) / len(matrix[0])
+		return similarity_avg
 
 def compute():
-	""" """
+	""" 
+	Utility function that loads a corpus of agreements to populate db.classified
+	"""
 	print("obtain a corpus...")
-	from classifier import get_agreement_corpus
-	corpus = get_agreement_corpus()
+	from classifier import build_corpus
+	corpus = build_corpus()
+
 	print("load the datastore...")
 	datastore = WiserDatabase()
 	cnt = 0
@@ -73,6 +145,7 @@ def compute():
 		record = datastore.fetch_by_filename(filename)
 		print("record contains: ")
 		print(record)
+
 		if (record is not None):
 			object_id = str(record['_id'])
 			category = record['category']
@@ -92,35 +165,49 @@ def compute():
 			print("update the datastore")
 			result = datastore.update_record(filename=filename, parameters=stats)
 
-
-def helpme():
-	filename = "nda-0000-0014.txt"
-	print("obtain a corpus...")
-	from classifier import get_agreement_corpus
-	corpus = get_agreement_corpus()
+def compute_contract_group_info():
+	""" 
+	Utility function that loads a corpus of agreements to populate db.classified
+	"""
 	print("load the datastore...")
+	from helper import WiserDatabase
 	datastore = WiserDatabase()
-	print("analyzing file %s..." % filename)
-	record = datastore.fetch_by_filename(filename)
 
-	schema = AgreementSchema()
-	schema.load_schema(record['category'])
-	aligner = Alignment(schema=schema)
-	doc = corpus.raw(filename)
-	paras = aligner.tokenize(doc)
-	aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-	tupleized = aligner.continguous_normalize(aligned_provisions)
-	print(len(tupleized))
-	print(tupleized)
-	#return aligned_provisions
+	print("obtain a corpus...")
+	from statistics import CorpusStatistics
+	from classifier import build_corpus
+	corpus = build_corpus()
+	corpus_stats = CorpusStatistics(corpus)
 
-	newdoc = [block for (block, type) in tupleized]
-	aligned_provisions = aligner.align(newdoc)
-	print("--------")
-	print(len(aligned_provisions))
-	print(aligned_provisions)
+	for category in corpus.categories():
+		print("analyzing category %s..." % category)
+		record = datastore.get_contract_group(category)
 
-	#analysis = AgreementStatistics(tupleized=tupleized, raw=corpus.raw(filename))
-	#stats = analysis.calculate_stats()
-	#doc_gulpease = analysis.calculate_complexity(corpus.raw(filename))
+		stats = {}
+		stats['group-similarity-score'] = corpus_stats.calculate_similarity(category=category)
+		stats['group-complexity-score'] = corpus_stats.calculate_complexity(category=category)
+
+		result = datastore.update_contract_group(agreement_type=category, info=stats)
+		if (result.acknowledged and result.modified_count):
+			print("matched count is %s" % str(result.matched_count))
+			print("modified count is %s" % str(result.modified_count))
+
+def display_contract_group_info():
+	""" 
+	prints out the contract_group collection for some metastats about contracts.
+	"""
+	print("load the datastore...")
+	from helper import WiserDatabase
+	datastore = WiserDatabase()
+
+	print("obtain a corpus...")
+	from statistics import CorpusStatistics
+	from classifier import build_corpus
+	corpus = build_corpus()
+	corpus_stats = CorpusStatistics(corpus)
+
+	for category in corpus.categories():
+		print("analyzing category %s..." % category)
+		record = datastore.get_contract_group(category)
+		print(record)
 
