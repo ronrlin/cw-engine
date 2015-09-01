@@ -50,10 +50,15 @@ class Alignment(object):
         self.agreement_corpus = PlaintextCorpusReader(BASE_PATH, fileids)
         print("Agreement Corpus of type %s has been loaded." % schema.get_agreement_type())
 
+        """
+        max_df is parameter to CountVectorizer
+        min_df is param to CV
+
+        """
         if (vectorizer == COUNT_VECT): 
-            self.vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,1))
+            self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,2))
         elif (vectorizer == TFIDF_VECT):
-            self.vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,1))
+            self.vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
 
         start_time = time.time()
         train_sents = list(' '.join(s) for s in self.training_corpus.sents())
@@ -103,6 +108,14 @@ class Alignment(object):
         return list(zip(content, list(results)))
 
     def continguous_normalize(self, tupleized):
+        """
+        Function combines contiguous tuples which are the same provision type.  
+        This helps simplify the presentation.  
+
+        :param tupleized: is a list of tuples of the form (["string", "of", "text"], type)
+
+        Returns a normalized tupleized.
+        """
         provision_types = [e[1] for e in tupleized]
         provision_text = [e[0] for e in tupleized]
         contig = []
@@ -243,7 +256,7 @@ def testr():
 
     schema = AgreementSchema()
     schema.load_schema('nondisclosure')
-    aligner = Alignment(schema=schema)
+    aligner = Alignment(schema=schema, vectorizer=TFIDF_VECT)
     doc = corpus.raw(filename)
     paras = aligner.tokenize(doc)
     aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
@@ -252,7 +265,24 @@ def testr():
     print(tupleized)
     return tupleized
 
+def comp():
+    print("obtain a corpus...")
+    from structure import AgreementSchema
+    from classifier import build_corpus
+    schema = AgreementSchema()
+    schema.load_schema('nondisclosure')
+    corpus = build_corpus()
+    doc = corpus.raw("nda-0000-0014.txt")
 
+    aligner1 = Alignment(schema=schema, vectorizer=COUNT_VECT)
+    aligner2 = Alignment(schema=schema, vectorizer=TFIDF_VECT)
+    
+    paras = aligner1.tokenize(doc)
+    aligned_provisions1 = aligner1.align(paras) # aligned_provisions is a list of tuples
+    paras = aligner2.tokenize(doc)
+    aligned_provisions2 = aligner2.align(paras) # aligned_provisions is a list of tuples
+
+    return(aligner1, aligner2)
 
 """
 Bypass main
