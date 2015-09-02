@@ -12,6 +12,7 @@ CORPUS_PATH = os.path.join(BASE_PATH, "small-data/")
 class AgreementVectorClassifier(object):
 	""" """
 	def __init__(self, vectorizer, corpus):
+		""" """
 		self.corpus = corpus
 		self.vectorizer = vectorizer
 		self.classifier = None
@@ -38,7 +39,7 @@ class AgreementVectorClassifier(object):
 	def classify_data(self, data):
 		data_vectorized = self.vectorizer.transform([data])
 		results = self.classifier.predict(data_vectorized)
-		return results[0]		
+		return results[0]
 
 class AgreementNaiveBayesClassifier(object):
 	""" """
