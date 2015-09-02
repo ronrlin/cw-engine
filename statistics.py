@@ -3,6 +3,7 @@ from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from scipy.spatial.distance import cosine
 from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 
 from helper import WiserDatabase
 from structure import AgreementSchema
@@ -11,19 +12,52 @@ from alignment import Alignment
 """
 CorpusStatistics(corpus)
 AgreementStatistics(tupleized)
+ProvisionStatistics()
 
 The idea is to create instances of the objects above, which write data to the datastore.
 
 function compute(...)
 """
+BASE_PATH = "./"
+
+class ProvisionStatistics(object):
+	""" """
+	def __init__(self):
+		# load the train/train_* files into a corpus
+		schema = AgreementSchema()
+		self.provisions = schema.list_provisions()
+		# provisions is a tuple (provision_name, provision_path)
+		training_file_names = [p[1] for p in self.provisions]
+		self.provision_names = [p[0] for p in self.provisions]
+		self.corpus = PlaintextCorpusReader(BASE_PATH, training_file_names)
+
+	def calculate_similarity(self, provisions):
+		""" 
+		:param provisions: is a list of strings 
+		"""
+		# vectorize the docs in the corpus
+		vect = TfidfVectorizer(min_df=1)
+		tfidf = vect.fit_transform(provisions)
+		matrix = (tfidf * tfidf.T).A
+		similarity_avg = sum(matrix[0]) / len(matrix[0])
+		return similarity_avg
+
+	def calculate_complexity(self):
+		import numpy as np
+		sents = [self.corpus.sents(fileid) for fileid in self.corpus.fileids()]
+		values = []
+		for text in docs:
+			character_count = len(text)
+			word_count = len(word_tokenize(text))
+			sent_count = len(sent_tokenize(text))
+			gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
+			values.append(gulpease)
+		return np.mean(values)
 
 class CorpusStatistics(object):
 	""" """
 	def __init__(self, corpus):
 		self.corpus = corpus
-
-	def hello(self):
-		print("hello")
 
 	def calculate_similarity(self, category=None):
 		""" 
@@ -201,13 +235,48 @@ def display_contract_group_info():
 	datastore = WiserDatabase()
 
 	print("obtain a corpus...")
-	from statistics import CorpusStatistics
 	from classifier import build_corpus
 	corpus = build_corpus()
-	corpus_stats = CorpusStatistics(corpus)
 
 	for category in corpus.categories():
-		print("analyzing category %s..." % category)
 		record = datastore.get_contract_group(category)
 		print(record)
+
+def compute_provision_group_info():
+	""" 
+	Utility function that loads a corpus of agreements to populate db.classified
+	"""
+	print("load the datastore...")
+	from helper import WiserDatabase
+	datastore = WiserDatabase()
+
+	print("obtain a corpus...")
+	from statistics import ProvisionStatistics
+	from classifier import build_corpus
+
+	provision_stats = ProvisionStatistics()
+	provisions = provision_stats.provisions
+	fileids = [p[1] for p in provisions]
+	for (provision_name, fileid) in provisions:
+		sents = corpus.sents(fileid)
+		stats = {}
+		stats['prov-similarity-avg'] = provision_stats.calculate_similarity(" ".join(sents))
+		stats['prov-complexity-avg'] = provision_stats.calculate_complexity(" ".join(sents))
+		#record = datastore.get_provision_group(category)
+		result = datastore.update_provision_group(provision_name, info)
+		if (result.acknowledged and result.modified_count):
+			print("matched count is %s" % str(result.matched_count))
+			print("modified count is %s" % str(result.modified_count))
+
+def display_provision_group_info():
+	""" 
+	prints out the provision_group collection for some metastats about contracts.
+	"""
+	print("load the datastore...")
+	from helper import WiserDatabase
+	datastore = WiserDatabase()
+	# Get all the provision types 
+	results = datastore.provision_group.find({})
+	for provision_info in results:
+		print(provision_info)
 

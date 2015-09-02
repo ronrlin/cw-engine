@@ -18,7 +18,13 @@ agreements = [
       'category' : 'indenture',        
    }]
 
-
+db = wiser_db
+collections { 
+   classified        : "repository of contracts that have been classified"
+   contracts         : "repository of contracts that have been uploaded, analyzed"
+   contract_group    : "global stats for classified contracts of a certain category"
+   provision_group   : "global stats for provisions of a certain category"
+}
 
 """
 
@@ -69,6 +75,13 @@ def create_provision_group_db():
    collection.insert_one({ 'provision_name' : 'nonconfidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
    collection.insert_one({ 'provision_name' : 'obligation_receiving_party', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
    print("created 'provision_group' collection...")
+
+def clear_provision_group_db():
+   """ Empty the provision_group_info collection """
+   client = MongoClient('localhost', 27017)
+   client['wiser_db'].drop_collection('provision_group')
+   print("drop 'provision_group' collection...")
+   client.close()
 
 def create_db():
    """ Create the 'classified' db, which stores metainformation about analyzed agreements """
@@ -194,13 +207,17 @@ class WiserDatabase(object):
 
    def update_contract_group(self, agreement_type, info):
       """ Update a dict that represents a contract_group and all its calculated properties """
-      print("called update contract group")
       result = self.contract_group.update_one({'agreement_type' : agreement_type}, {'$set' : info}, False)
       return result
 
    def get_provision_group(self, provision_name):
       """ Return a dict that represents a provision_group and all its calculated properties """
       result = self.provision_group.find_one({ 'provision_name' : provision_name })
+      return result
+
+   def update_provision_group(self, provision_name, info):
+      """ Update a dict that represents a provision_group and all its calculated properties """
+      result = self.provision_group.update_one({'provision_name' : provision_name}, {'$set' : info}, True)
       return result
 
 def testing():
