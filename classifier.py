@@ -21,8 +21,7 @@ class AgreementVectorClassifier(object):
 		textcomp = []
 		for thisfile in self.corpus.fileids():
 			text = self.corpus.raw(thisfile)
-			text = ' '.join([text])
-			textcomp.append(text)
+			textcomp.append([text])
 
 		train_vector = self.vectorizer.fit_transform(textcomp)
 		self.classifier = svm.LinearSVC(class_weight='auto')
