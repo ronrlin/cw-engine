@@ -197,12 +197,12 @@ class Alignment(object):
 
     def get_detail(self, tupleized):
         # Collect contract_group statistics from datastore
-        contract_group_info = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
+        contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
         detail = dict()
         detail['body'] = self.get_markup(tupleized)
         detail['agreement_type'] = self.schema.get_agreement_type() # get this from contract_group_info
         detail['text-compare-count'] = len(self.agreement_corpus.fileids()) # get this from contract_group_info
-        detail['group-similarity-score'] = 0 # get this from contract_group_info
+        detail['group-similarity-score'] = contract_group['group-similarity-score'] # get this from contract_group_info
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             print("get_detail: get the %s provision type" % _type)
