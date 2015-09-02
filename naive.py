@@ -3,7 +3,9 @@ import os
 from sklearn import svm
 from nltk.corpus.reader.plaintext import CategorizedPlaintextCorpusReader
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
+
 from structure import AgreementSchema
+from structure import load_training_data
 
 import nltk
 
@@ -24,7 +26,7 @@ class NaiveAlignment(object):
 
 		print("Load %s agreement training provisions" % schema.get_agreement_type())
 		provisions_in = schema.get_provisions()
-		provisions_out = schema.list_provisions()
+		provisions_all = load_training_data().items()
 
 		# provisions_reqd is a tuple (provision_name, provision_path)
 		training_file_names = [p[1] for p in provisions_in]
@@ -41,7 +43,28 @@ class NaiveAlignment(object):
 		print("Agreement Corpus of type %s has been loaded." % schema.get_agreement_type())
 
 		# Based on the schema, you load a corpus
+		#stops = set(stopwords.words("english"))
+		#words = [words for words in catcorpus.words()]
+		#filtered_words = [word for word in word_list if word not in stops]
+		# a good place to curate the words_ds which is like the reference db
 		self.words_ds = nltk.FreqDist(words.lower().rstrip('*_-. ') for words in self.training_corpus.words())
+
+	def fit2(self):
+		import random
+		import re
+		provisions = load_training_data().items()
+		provision_names = [pv[0] for pv in provisions]
+		provision_paths = [pv[1] for pv in provisions]
+
+		#provision_names= ['train_waiver', 'confidential_information']
+		#provision_paths= ['train/train_waiver', 'train/train_confidential_information']
+
+		self.training_corpus = PlaintextCorpusReader(".", provision_paths)
+		texts = [(list(sents), re.sub("train/train_", "", fileid)) for fileid in self.training_corpus.fileids() for sents in self.training_corpus.sents(fileid)]
+		# another idea is to make texts by paragraphs, so train on the individual paragraphs, not whole doc
+		train_set = [(self.get_features(_doc), _class) for (_doc,_class) in texts]		
+		self.classifier = nltk.NaiveBayesClassifier.train(train_set)		
+
 
 	def fit(self):
 		""" """
@@ -61,12 +84,10 @@ class NaiveAlignment(object):
 		"""
 		output = []
 		for d in data:
-			val = self.classifier.classify(self.get_features(tokenize(d)))
+			val = self.classifier.classify(self.get_features(d))
 			output.append(val)
-
 		#return output
 		return list(zip(data, list(output)))
-
 
 	def get_features(self, doc=['list', 'of', 'strings']):
 		""" 
@@ -98,7 +119,7 @@ def testing():
 	schema.load_schema("nondisclosure.ini")
 
 	aligner = NaiveAlignment(schema=schema)
-	aligner.fit()
+	aligner.fit2()
 	aligner.show_info()
 	#filename = "nda-0000-0014.txt"
 	#print("obtain a corpus...")
@@ -116,3 +137,36 @@ Bypass main
 """
 if __name__ == "__main__":
     pass
+
+
+def main():
+	from structure import AgreementSchema
+	schema = AgreementSchema()
+	schema.load_schema("nondisclosure.ini")
+
+	from naive import NaiveAlignment
+	aligner = NaiveAlignment(schema=schema)
+	aligner.fit2()
+	aligner.show_info()
+	#filename = "nda-0000-0014.txt"
+	#print("obtain a corpus...")
+	#from classifier import build_corpus
+	#corpus = build_corpus()
+	
+	provisions = load_training_data().items()
+	provision_names = [pv[0] for pv in provisions]
+	provision_paths = [pv[1] for pv in provisions]
+
+	#doc = corpus.raw(filename)
+	paras = ['Confidential Information includes, Confidential Information but is not limited to, the following, whether now in existence or hereafter created']
+	aligned = aligner.align(paras) # aligned_provisions is a list of tuples
+	print(aligned)
+
+	training_corpus = PlaintextCorpusReader(".", provision_paths)
+
+	texts = [(list(sents), re.sub("train/train_", "", fileid)) for fileid in training_corpus.fileids() for sents in training_corpus.sents(fileid)]
+	print(texts)
+	# another idea is to make texts by paragraphs, so train on the individual paragraphs, not whole doc
+	#random.shuffle(texts)
+	#train_set = [(self.get_features(_doc), _class) for (_doc,_class) in texts]		
+	#self.classifier = nltk.NaiveBayesClassifier.train(train_set)	

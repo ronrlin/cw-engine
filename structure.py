@@ -1,9 +1,20 @@
 #!/usr/bin/python
 import configparser
 import os
+import re
+
+"""
+structure.py provides utilities and services for ingesting and accessing 
+training files and schema.  Schema are configuration files that encode 
+information about a kind of an agreement.  Training files compile sample 
+provisions from agreements into a single data source.
+
+
+"""
 
 BASE_PATH = "./"
 SCHEMA_PATH = os.path.join(BASE_PATH, "schema/")
+TRAIN_PATH = os.path.join(BASE_PATH, "train/")
 
 class AgreementSchema(object):
 	"""
@@ -38,21 +49,6 @@ class AgreementSchema(object):
 		"""
 		return self.provisions
 
-	def list_provisions(self):
-		"""
-		Returns a list of all possible provisions that can be identified.
-		Or read all the files in /train
-		"""
-		tuples = [
-			("confidential_information", "train/train_confidential_information"),
-			("nonconfidential_information", "train/train_nonconfidential_information"),
-			("obligation_receiving_party", "train/train_obligation_of_receiving_party"),
-			("time_period", "train/train_time_period"),
-			("waiver", "train/train_waiver"),
-			("severability", "train/train_severability"),
-		]
-		return(tuples)
-
 	def get_concepts(self):
 		"""	
 		Returns a list of tuples which correspond to the concepts expected in this 
@@ -72,6 +68,17 @@ class AgreementSchema(object):
 		Returns a string corresponding to the agreement_type.
 		"""
 		return self.agreement_type
+
+def load_training_data():
+	"""
+	Returns a dict of provision_names => provision training file.  
+	"""
+	train_files = [f for f in os.listdir(TRAIN_PATH) if re.match(r'train_', f)]
+	provisions = {}
+	for f in train_files:
+		provision_name = f[6:] 
+		provisions[provision_name] = "train/" + f
+	return provisions
 
 def init(): 
 	"""

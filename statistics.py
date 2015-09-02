@@ -7,6 +7,7 @@ from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 
 from helper import WiserDatabase
 from structure import AgreementSchema
+from structure import load_training_data
 from alignment import Alignment
 
 """
@@ -25,7 +26,8 @@ class ProvisionStatistics(object):
 	def __init__(self):
 		# load the train/train_* files into a corpus
 		schema = AgreementSchema()
-		self.provisions = schema.list_provisions()
+		training = load_training_data()
+		self.provisions = training.items()
 		# provisions is a tuple (provision_name, provision_path)
 		training_file_names = [p[1] for p in self.provisions]
 		self.provision_names = [p[0] for p in self.provisions]
@@ -259,6 +261,8 @@ def compute_provision_group_info():
 	from statistics import ProvisionStatistics
 	provision_stats = ProvisionStatistics()
 	provisions = provision_stats.provisions
+
+	provisions = load_training_data().items()
 	for (provision_name, fileid) in provisions:
 		similarity_scores = []
 		complexity_scores = []
