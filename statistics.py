@@ -44,14 +44,19 @@ class ProvisionStatistics(object):
 
 	def calculate_complexity(self):
 		import numpy as np
-		sents = [self.corpus.sents(fileid) for fileid in self.corpus.fileids()]
 		values = []
-		for text in docs:
-			character_count = len(text)
-			word_count = len(word_tokenize(text))
-			sent_count = len(sent_tokenize(text))
-			gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
-			values.append(gulpease)
+		for fileid in self.corpus.fileids():
+			docsents = self.corpus.sents(fileid)
+			text_blocks = [blah for blah in docsents]
+
+			for thistext in text_blocks:
+				text = " ".join(thistext)
+				character_count = len(text)
+				word_count = len(word_tokenize(text))
+				sent_count = len(sent_tokenize(text))
+				gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
+				values.append(gulpease)
+
 		return np.mean(values)
 
 class CorpusStatistics(object):
@@ -244,7 +249,7 @@ def display_contract_group_info():
 
 def compute_provision_group_info():
 	""" 
-	Utility function that loads a corpus of agreements to populate db.classified
+	Utility function that loads a corpus of trainers to populate db.provision_group
 	"""
 	print("load the datastore...")
 	from helper import WiserDatabase
@@ -252,18 +257,19 @@ def compute_provision_group_info():
 
 	print("obtain a corpus...")
 	from statistics import ProvisionStatistics
-	from classifier import build_corpus
-
 	provision_stats = ProvisionStatistics()
 	provisions = provision_stats.provisions
-	fileids = [p[1] for p in provisions]
 	for (provision_name, fileid) in provisions:
-		sents = corpus.sents(fileid)
+		similarity_scores = []
+		complexity_scores = []
+		sents = provision_stats.corpus.sents(fileid)
+		joined_sents = []
+		for sent in sents:
+			joined_sents.append(" ".join(sent))
 		stats = {}
-		stats['prov-similarity-avg'] = provision_stats.calculate_similarity(" ".join(sents))
-		stats['prov-complexity-avg'] = provision_stats.calculate_complexity(" ".join(sents))
-		#record = datastore.get_provision_group(category)
-		result = datastore.update_provision_group(provision_name, info)
+		stats['prov-similarity-avg'] = provision_stats.calculate_similarity(joined_sents)
+		stats['prov-complexity-avg'] = provision_stats.calculate_complexity()
+		result = datastore.update_provision_group(provision_name, stats)
 		if (result.acknowledged and result.modified_count):
 			print("matched count is %s" % str(result.matched_count))
 			print("modified count is %s" % str(result.modified_count))
