@@ -8,6 +8,7 @@ import nltk
 from nltk.tokenize import word_tokenize
 import os
 from structure import AgreementSchema
+from structure import load_training_data
 
 BASE_PATH = "./"
 COUNT_VECT = 1
@@ -21,7 +22,7 @@ is critical to being able to calculate relative frequency of certain provisions.
 """
 class Alignment(object):
 
-    def __init__(self, schema=None, vectorizer=COUNT_VECT, stop_words=None):
+    def __init__(self, schema=None, vectorizer=COUNT_VECT, stop_words=None, all=False):
         """
         Create an Alignment object. 
 
@@ -30,11 +31,18 @@ class Alignment(object):
         :param stop_words: specify stop words to drop from texts.
         """
         self.schema = schema
-        print("Load %s agreement training provisions" % schema.get_agreement_type())
-        provisions_reqd = schema.get_provisions()
-        # provisions_reqd is a tuple (provision_name, provision_path)
-        training_file_names = [p[1] for p in provisions_reqd]
-        provision_names = [p[0] for p in provisions_reqd]       
+        provisions = None
+
+        if (not all):
+            print("Load %s agreement training provisions" % schema.get_agreement_type())
+            provisions = schema.get_provisions()
+        else:
+            # to load all files
+            provisions = load_training_data().items()
+
+        # provisions is a tuple (provision_name, provision_path)
+        training_file_names = [p[1] for p in provisions]
+        provision_names = [p[0] for p in provisions]
 
         import time
         start_time = time.time()
@@ -80,17 +88,11 @@ class Alignment(object):
         end_time = time.time()
         print("Time to assemble a target vector is %s seconds" % (end_time - start_time))
 
-        new_target = list()
-        for t in target:
-            for (name, filename) in provisions_reqd:
-                if filename == t:
-                    new_target.append(name)
-        print(new_target)
-
+        provision_names
 
         start_time = time.time()
         self.cll = svm.LinearSVC(class_weight='auto')
-        self.cll.fit(train_vec, new_target)
+        self.cll.fit(train_vec, provision_names)
         end_time = time.time()
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
