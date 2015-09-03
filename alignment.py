@@ -80,11 +80,10 @@ class Alignment(object):
 
         start_time = time.time()
         target = list()
-        target2 = list()
-
         for tfile in self.training_corpus.fileids():
             for tpara in self.training_corpus.sents(tfile):  
-                target.append(tfile)
+                res = [fi for (name, fi) in provisions if (fi==tfile)]
+                target.append(res[0])
         end_time = time.time()
         print("Time to assemble a target vector is %s seconds" % (end_time - start_time))
 
@@ -92,7 +91,7 @@ class Alignment(object):
 
         start_time = time.time()
         self.cll = svm.LinearSVC(class_weight='auto')
-        self.cll.fit(train_vec, provision_names)
+        self.cll.fit(train_vec, target)
         end_time = time.time()
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
@@ -170,7 +169,6 @@ class Alignment(object):
         ll = []
         ctr = 0
         for nn in conttypes:
-            print("let's sort %s " % nn)        
             combolists = newdict[nn]
             comboprovs = combolists.pop(0)
             combo = ""
@@ -200,8 +198,10 @@ class Alignment(object):
     def get_detail(self, tupleized):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
-        detail = dict()
-        detail['body'] = self.get_markup(tupleized)
+        document = dict()
+        detail = document['mainDoc']
+        detail = {}
+        detail['_body'] = self.get_markup(tupleized)
         detail['agreement_type'] = self.schema.get_agreement_type() # get this from contract_group_info
         detail['text-compare-count'] = len(self.agreement_corpus.fileids()) # get this from contract_group_info
         detail['group-similarity-score'] = contract_group['group-similarity-score'] # get this from contract_group_info
@@ -210,7 +210,7 @@ class Alignment(object):
             print("get_detail: get the %s provision type" % _type)
             provision_group_info = self.datastore.get_provision_group(_type)
             if provision_group_info is not None:
-                detail[_type] = {
+                document[_type] = {
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
                     "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
@@ -219,8 +219,8 @@ class Alignment(object):
                     "provision-tag" : "some-label", # computed on the fly
                 }
             else: 
-                detail[_type] = {}
-        return detail
+                document[_type] = {}
+        return document
 
 def testing():
     """ test that the class is working """
@@ -262,7 +262,9 @@ def testr():
     doc = corpus.raw(filename)
     paras = aligner.tokenize(doc)
     aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-    
+    print("\naligned provisions\n")
+    print(aligned_provisions)
+    print("\n")
     tupleized = aligner.continguous_normalize(aligned_provisions)
     print(tupleized)
     return tupleized
@@ -276,9 +278,9 @@ def comp():
     corpus = build_corpus()
     doc = corpus.raw("nda-0000-0014.txt")
 
-    aligner1 = Alignment(schema=schema, vectorizer=COUNT_VECT)
-    aligner2 = Alignment(schema=schema, vectorizer=TFIDF_VECT)
-    
+    aligner1 = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=False)
+    aligner2 = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=True)
+
     paras = aligner1.tokenize(doc)
     aligned_provisions1 = aligner1.align(paras) # aligned_provisions is a list of tuples
     paras = aligner2.tokenize(doc)
