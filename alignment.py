@@ -199,18 +199,20 @@ class Alignment(object):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
         document = dict()
-        detail = document['mainDoc']
-        detail = {}
-        detail['_body'] = self.get_markup(tupleized)
-        detail['agreement_type'] = self.schema.get_agreement_type() # get this from contract_group_info
-        detail['text-compare-count'] = len(self.agreement_corpus.fileids()) # get this from contract_group_info
-        detail['group-similarity-score'] = contract_group['group-similarity-score'] # get this from contract_group_info
+        provisions = {}
+        document['mainDoc'] = {
+            '_body' : self.get_markup(tupleized),
+            'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
+            'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
+            'doc-similarity-score' : 0, # get this from contract_group_info
+            'group-similarity-score' : contract_group['group-similarity-score'], # get this from contract_group_info
+        }
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             print("get_detail: get the %s provision type" % _type)
             provision_group_info = self.datastore.get_provision_group(_type)
             if provision_group_info is not None:
-                document[_type] = {
+                provisions[_type] = {
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
                     "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
@@ -219,7 +221,9 @@ class Alignment(object):
                     "provision-tag" : "some-label", # computed on the fly
                 }
             else: 
-                document[_type] = {}
+                provisions[_type] = {}
+        document['provisions'] = provisions
+        document['concepts'] = {}
         return document
 
 def testing():
