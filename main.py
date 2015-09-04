@@ -96,7 +96,7 @@ def handle_contract(contract_id=None):
 		schema.load_schema(agreement_type)
 
 		# Start alignment
-		aligner = Alignment(schema=schema)
+		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(agreement_text)
 		aligned_provisions = aligner.align(paras)
 		aligned_provisions = aligner.contiguous_normalize(paras)

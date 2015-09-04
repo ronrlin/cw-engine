@@ -4,11 +4,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 from sklearn import svm
 
+import os
 import nltk
 from nltk.tokenize import word_tokenize
-import os
 from structure import AgreementSchema
 from structure import load_training_data
+from structure import get_provision_name_from_file
 
 BASE_PATH = "./"
 COUNT_VECT = 1
@@ -190,7 +191,7 @@ class Alignment(object):
         """ returns content with markup to identify provisions within agreement """
         _markup_list = []
         for (_block, _type) in tupleized:
-            _markup_list.append("<span class='" + _type + "'>" + _block + "</span>")
+            _markup_list.append("<span class='" + get_provision_name_from_file(_type) + "'>" + _block + "</span>")
 
         _content = "</p><p>".join(_markup_list)
         return "<p>" + _content + "</p>"
@@ -210,9 +211,10 @@ class Alignment(object):
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             print("get_detail: get the %s provision type" % _type)
+            provision_name = get_provision_name_from_file(_type)
             provision_group_info = self.datastore.get_provision_group(_type)
             if provision_group_info is not None:
-                provisions[_type] = {
+                provisions[provision_name] = {
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
                     "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
@@ -221,7 +223,7 @@ class Alignment(object):
                     "provision-tag" : "some-label", # computed on the fly
                 }
             else: 
-                provisions[_type] = {}
+                provisions[provision_name] = {}
         document['provisions'] = provisions
         document['concepts'] = {}
         return document
