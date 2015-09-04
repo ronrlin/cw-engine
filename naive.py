@@ -12,8 +12,8 @@ import nltk
 BASE_PATH = "./"
 CORPUS_PATH = os.path.join(BASE_PATH, "train/")
 
-DATA_PATH = "/home/obironkenobi/Projects/ContractWiser/"
-AGREEMENT_PATH = os.path.join(DATA_PATH, "small-data/")
+DATA_PATH = "./"
+AGREEMENT_PATH = os.path.join(DATA_PATH, "data/")
 
 class NaiveAlignment(object):
 
