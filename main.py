@@ -33,7 +33,7 @@ datastore = WiserDatabase()
 print("Loading the agreement corpus...")
 corpus = build_corpus()
 print("Loading the agreement classifier...")
-classifier = get_agreement_classifier_v2(corpus)
+classifier = get_agreement_classifier_v3(corpus)
 print("Application ready to load.")
 
 @app.route('/')
