@@ -6,8 +6,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 import nltk
 
-BASE_PATH = "/home/obironkenobi/Projects/ContractWiser/"
-CORPUS_PATH = os.path.join(BASE_PATH, "small-data/")
+BASE_PATH = "./"
+CORPUS_PATH = os.path.join(BASE_PATH, "data/")
 
 class AgreementVectorClassifier(object):
 	""" """
