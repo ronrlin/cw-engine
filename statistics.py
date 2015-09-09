@@ -22,42 +22,82 @@ function compute(...)
 BASE_PATH = "./"
 
 class ProvisionStatistics(object):
-	""" """
-	def __init__(self):
+	""" 
+	It would be nice to ask this object:
+
+	compare this text to text that is identified as a certain provision
+	p = ProvisionStatistics(category)
+	p.calculate_similarity(provision_text)
+
+	if a category is not specified, then load all.
+	calculate_similarity(self, text) #calculate the similarity to the reference corpus
+	if text=None, then just return the average of all.
+	if text=something, then compare the similarity of the text to the reference
+
+	calculate_complexity(self, text)
+	if text=None, then calcualte the average
+	if text=something then calculate the given text compared to reference
+	"""
+	def __init__(self, provision_name=None):
 		# load the train/train_* files into a corpus
-		schema = AgreementSchema()
 		training = load_training_data()
-		self.provisions = training.items()
+		if provision_name is not None:			
+			self.provisions = [name for (name, path) in training if name==provision_name]
+		else:
+			self.provisions = training.items()
 		# provisions is a tuple (provision_name, provision_path)
 		training_file_names = [p[1] for p in self.provisions]
 		self.provision_names = [p[0] for p in self.provisions]
 		self.corpus = PlaintextCorpusReader(BASE_PATH, training_file_names)
 
-	def calculate_similarity(self, provisions):
+	def calculate_similarity(self, text=None):
 		""" 
-		:param provisions: is a list of strings 
+		Calculate the similarity of the given text. If no text parameter 
+		is specified then an average similarity score is calculated for
+		all the tokenized sentences that are found in the texts of the corpus.    
+
+		:param text: is a string 
+
+		Returns a floating point value.
 		"""
-		# vectorize the docs in the corpus
+		fileids = self.corpus.fileids()
+		provisions = [" ".join(sent) for fileid in fileids for sent in self.corpus.sents(fileid)]
 		vect = TfidfVectorizer(min_df=1)
+		# if text is specified, then append it to the list to be vectorized.
+		if text is not None:		
+			provisions.append(text)
+		print(provisions)
 		tfidf = vect.fit_transform(provisions)
 		matrix = (tfidf * tfidf.T).A
 		similarity_avg = sum(matrix[0]) / len(matrix[0])
 		return similarity_avg
 
-	def calculate_complexity(self):
-		import numpy as np
-		values = []
-		for fileid in self.corpus.fileids():
-			docsents = self.corpus.sents(fileid)
-			text_blocks = [blah for blah in docsents]
+	def calculate_complexity(self, text=None):
+		"""
+		Calculate the complexity of the given text. If no text parameter 
+		is specified, then the average complexity is calculated for the 
+		corpus loaded.    
 
-			for thistext in text_blocks:
-				text = " ".join(thistext)
-				character_count = len(text)
-				word_count = len(word_tokenize(text))
-				sent_count = len(sent_tokenize(text))
-				gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
-				values.append(gulpease)
+		:param text: is a string 
+
+		Returns a floating point value.
+		"""
+		import numpy as np
+		text_blocks = []
+		if text is not None:
+			text_blocks = [text]
+		else:
+			text_blocks = [docsents for fileid in self.corpus.fileids() for docsents in self.corpus.sents(fileid)]
+
+		values = []
+
+		for thistext in text_blocks:
+			t = " ".join(thistext)
+			character_count = len(t)
+			word_count = len(word_tokenize(t))
+			sent_count = len(sent_tokenize(t))
+			gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
+			values.append(gulpease)
 
 		return np.mean(values)
 
@@ -290,3 +330,15 @@ def display_provision_group_info():
 	for provision_info in results:
 		print(provision_info)
 
+def testing_calcs():
+	sample_provision = "Some text that represents a provision from an uploaded agreement."
+
+	# load ProvisionStats with no provision specified.
+	stats = ProvisionStatistics()
+	comp_score = stats.calculate_complexity(text=sample_provision)
+	sim_score = stats.calculate_similarity(text=sample_provision)
+	print("comp_score is %s" % str(comp_score))
+	print("sim_score is %s" % str(sim_score))
+	#astats = AgreementStatistics(tupleized)
+	#result = stats.calculate_complexity()
+	#result = stats.calculate_similarity()
