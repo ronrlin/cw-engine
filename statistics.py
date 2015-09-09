@@ -40,11 +40,11 @@ class ProvisionStatistics(object):
 	"""
 	def __init__(self, provision_name=None):
 		# load the train/train_* files into a corpus
-		training = load_training_data()
+		training = load_training_data().items()
 		if provision_name is not None:			
-			self.provisions = [name for (name, path) in training if name==provision_name]
+			self.provisions = [(name,path) for (name, path) in training if name==provision_name]
 		else:
-			self.provisions = training.items()
+			self.provisions = training
 		# provisions is a tuple (provision_name, provision_path)
 		training_file_names = [p[1] for p in self.provisions]
 		self.provision_names = [p[0] for p in self.provisions]
@@ -66,7 +66,6 @@ class ProvisionStatistics(object):
 		# if text is specified, then append it to the list to be vectorized.
 		if text is not None:		
 			provisions.append(text)
-		print(provisions)
 		tfidf = vect.fit_transform(provisions)
 		matrix = (tfidf * tfidf.T).A
 		similarity_avg = sum(matrix[0]) / len(matrix[0])
@@ -291,29 +290,21 @@ def display_contract_group_info():
 
 def compute_provision_group_info():
 	""" 
-	Utility function that loads a corpus of trainers to populate db.provision_group
+	This function calculates provision_group info and writes it to the MongoDB.
+	It loads all training files and calculates similarity/complexity
+	for each sentence in the training file.  
 	"""
 	print("load the datastore...")
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
 
-	print("obtain a corpus...")
-	from statistics import ProvisionStatistics
-	provision_stats = ProvisionStatistics()
-	provisions = provision_stats.provisions
-
-	provisions = load_training_data().items()
-	for (provision_name, fileid) in provisions:
-		similarity_scores = []
-		complexity_scores = []
-		sents = provision_stats.corpus.sents(fileid)
-		joined_sents = []
-		for sent in sents:
-			joined_sents.append(" ".join(sent))
-		stats = {}
-		stats['prov-similarity-avg'] = provision_stats.calculate_similarity(joined_sents)
-		stats['prov-complexity-avg'] = provision_stats.calculate_complexity()
-		result = datastore.update_provision_group(provision_name, stats)
+	for (name, path) in load_training_data().items():
+		print("loading provision %s " % name)
+		stats = ProvisionStatistics(name)
+		info = {}
+		info['prov-similarity-avg'] = stats.calculate_similarity()
+		info['prov-complexity-avg'] = stats.calculate_complexity()
+		result = datastore.update_provision_group(name, info)
 		if (result.acknowledged and result.modified_count):
 			print("matched count is %s" % str(result.matched_count))
 			print("modified count is %s" % str(result.modified_count))

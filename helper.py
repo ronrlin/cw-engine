@@ -21,6 +21,16 @@ To refresh the statistics computed for the application, run:
 >> helper.create_provision_group_db()
 >> helper.create_contract_group_db()
 
+CW relies on pre-computed statistics, so it's necessary to 
+initialize the statistics about provision_groups and 
+contract_groups.  
+
+>>> import statistics
+>>> statistics.compute_contract_group_info()
+>>> statistics.display_contract_group_info()
+
+>>> statistics.compute_provision_group_info()
+
 About the datasets
 
 db = wiser_db
@@ -78,7 +88,7 @@ def create_contract_group_db():
    # create a document for each agreement_type
    agreement_types = ['nondisclosure','convertible','indenture','revolving_credit', 'business_loan','bridge_loan']
    for thistype in agreement_types:
-      collection.insert_one({ 'agreement_type' : thistype, 'group-similarity-score' : 0 })
+      collection.insert_one({ 'agreement_type' : thistype, 'group-complexity-score' : 0, 'group-similarity-score' : 0 })
    print("created 'contract_group' collection...")
 
 def clear_contract_group_db():
