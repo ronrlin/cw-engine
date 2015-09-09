@@ -4,9 +4,31 @@ from bson.objectid import ObjectId
 import bson
 
 """
-TODO: Create a unique index on 'filename'.
-TODO: Check for exceptions in the case that uniqueness is broken.
-TODO: Consider more robust exception handling.
+Bootstrapping the data for running ContractWiser Engine.
+
+1. Run the interpreter at the CLI:
+
+>> python
+>> import helper
+>> helper.create_db()
+
+2. That's it!
+
+To refresh the statistics computed for the application, run:
+
+>> helper.clear_meta_info()
+>> helper.create_provision_group_db()
+>> helper.create_contract_group_db()
+
+About the datasets
+
+db = wiser_db
+collections { 
+   classified        : "repository of contracts that have been classified"
+   contracts         : "repository of contracts that have been uploaded, analyzed"
+   contract_group    : "global stats for classified contracts of a certain category"
+   provision_group   : "global stats for provisions of a certain category"
+}
 
 agreements = [
    {
@@ -17,14 +39,6 @@ agreements = [
       'filename' : '20d22f00ed2f67c68ff0d81975242187eb07a0c7499da0e16e83f11b4c0372a4',
       'category' : 'indenture',        
    }]
-
-db = wiser_db
-collections { 
-   classified        : "repository of contracts that have been classified"
-   contracts         : "repository of contracts that have been uploaded, analyzed"
-   contract_group    : "global stats for classified contracts of a certain category"
-   provision_group   : "global stats for provisions of a certain category"
-}
 
 """
 
