@@ -12,6 +12,8 @@ from structure import load_training_data
 from structure import get_provision_name_from_file
 
 BASE_PATH = "./"
+DATA_PATH = os.path.join(BASE_PATH, "data/")
+
 COUNT_VECT = 1
 TFIDF_VECT = 2
 
@@ -58,7 +60,7 @@ class Alignment(object):
         self.datastore = WiserDatabase()
         records = self.datastore.fetch_by_category(schema.get_agreement_type())
         fileids = [r['filename'] for r in records]
-        self.agreement_corpus = PlaintextCorpusReader(BASE_PATH, fileids)
+        self.agreement_corpus = PlaintextCorpusReader(DATA_PATH, fileids)
         print("Agreement Corpus of type %s has been loaded." % schema.get_agreement_type())
 
         """
@@ -204,6 +206,7 @@ class Alignment(object):
         document = dict()
         provisions = {}
 
+        from statistics import AgreementStatistics
         astats = AgreementStatistics(tupleized)
         aparams = astats.calculate_stats()
         aparams['doc_gulpease']
