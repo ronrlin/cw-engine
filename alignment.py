@@ -30,6 +30,8 @@ class Alignment(object):
         :param schema: specify the AgremeentSchema to use for alignment.
         :param vectorizer: specify the type of vectorization method.
         :param stop_words: specify stop words to drop from texts.
+        :param all: boolean that denotes whether to load all possible 
+            provision trainers
         """
         self.schema = schema
         provisions = None
@@ -201,12 +203,22 @@ class Alignment(object):
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
         document = dict()
         provisions = {}
+
+        astats = AgreementStatistics(tupleized)
+        aparams = astats.calculate_stats()
+        aparams['doc_gulpease']
+        doc = [e[0] for e in tupleized]
+        doc = " ".join(doc)
+        
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
             'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
-            'doc-similarity-score' : 0, # get this from contract_group_info
+            # doc-similarity is this doc compared to the group
+            'doc-similarity-score' : astats.calculate_similarity(doc, self.agreement_corpus), # contract_group['doc-similarity-score'] get this from contract_group_info 
+            'doc-complexity-score' : aparams['doc_gulpease'],
             'group-similarity-score' : contract_group['group-similarity-score'], # get this from contract_group_info
+            'group-complexity-score' : contract_group['group-complexity-score'], # get this from contract_group_info
         }
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
