@@ -78,6 +78,7 @@ def create_contract_db():
    collection = db['contracts']
    collection.insert_one({'text' : 'some text', 'agreement_type' : 'nondisclosure'})
    print("created 'contracts' collection...")
+   client.close()
 
 def create_contract_group_db():
    """ Create the 'contract_group' db """
@@ -90,6 +91,7 @@ def create_contract_group_db():
    for thistype in agreement_types:
       collection.insert_one({ 'agreement_type' : thistype, 'group-complexity-score' : 0, 'group-similarity-score' : 0 })
    print("created 'contract_group' collection...")
+   client.close()
 
 def clear_contract_group_db():
    """ Empty the contract_group_info collection """
@@ -119,6 +121,8 @@ def create_provision_group_db():
       print("created a provision_group for %s " % provision_name)
 
    print("completed the 'provision_group' db.")
+   client.close()
+
 
 def clear_provision_group_db():
    """ Empty the provision_group_info collection """
