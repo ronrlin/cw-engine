@@ -37,6 +37,11 @@ def clear_db():
    print("drop wiser_db...")
    client.close()
 
+def clear_meta_info():
+   """  """
+   clear_provision_group_db()
+   clear_contract_group_db()
+
 def create_contract_db():
    """ Create the 'contracts' db """
    client = MongoClient('localhost', 27017)
@@ -71,10 +76,21 @@ def create_provision_group_db():
    print(client.database_names())
    db = client['wiser_db']
    collection = db['provision_group']
-   collection.insert_one({ 'provision_name' : 'confidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
-   collection.insert_one({ 'provision_name' : 'nonconfidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
-   collection.insert_one({ 'provision_name' : 'obligation_receiving_party', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
-   print("created 'provision_group' collection...")
+   #collection.insert_one({ 'provision_name' : 'confidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
+   #collection.insert_one({ 'provision_name' : 'nonconfidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
+   #collection.insert_one({ 'provision_name' : 'obligation_receiving_party', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
+
+   from structure import load_training_data
+   provisions_all = load_training_data().items()
+   print(provisions_all)
+   for provision in provisions_all:
+      provision_name = provision[0]
+      provision_file = provision[1]
+      info = { 'provision_name' : provision_name, 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 }
+      collection.insert_one(info)
+      print("created a provision_group for %s " % provision_name)
+
+   print("completed the 'provision_group' db.")
 
 def clear_provision_group_db():
    """ Empty the provision_group_info collection """
