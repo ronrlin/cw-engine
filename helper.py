@@ -8,6 +8,7 @@ Bootstrapping the data for running ContractWiser Engine.
 
 1. Run the interpreter at the CLI:
 
+%> cd <cw-engine root>
 >> python
 >> import helper
 >> helper.create_db()
@@ -29,6 +30,9 @@ collections {
    contract_group    : "global stats for classified contracts of a certain category"
    provision_group   : "global stats for provisions of a certain category"
 }
+
+Data returned from the 'classified' or 'contracts' collections 
+returns something that will resemble this below: 
 
 agreements = [
    {
