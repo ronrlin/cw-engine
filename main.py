@@ -91,7 +91,7 @@ def handle_contract(contract_id=None):
 
 		agreement_type = contract['agreement_type']
 		agreement_text = contract['text']
-		print("loading the agreement schema for %s..." % agreement_text)
+		print("loading the agreement schema for %s..." % agreement_type)
 		schema = AgreementSchema()
 		schema.load_schema(agreement_type)
 
