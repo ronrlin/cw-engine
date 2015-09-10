@@ -73,6 +73,7 @@ class Alignment(object):
         elif (vectorizer == TFIDF_VECT):
             self.vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
 
+        # TODO: Some of the sents() are really small.  
         start_time = time.time()
         train_sents = list(' '.join(s) for s in self.training_corpus.sents())
         end_time = time.time()
@@ -87,12 +88,12 @@ class Alignment(object):
         target = list()
         for tfile in self.training_corpus.fileids():
             for tpara in self.training_corpus.sents(tfile):  
+                # TODO: We should really assemble the train_vec here, and maybe combine 
+                # short sentences or something like that!! 
                 res = [fi for (name, fi) in provisions if (fi==tfile)]
                 target.append(res[0])
         end_time = time.time()
         print("Time to assemble a target vector is %s seconds" % (end_time - start_time))
-
-        provision_names
 
         start_time = time.time()
         self.cll = svm.LinearSVC(class_weight='auto')
@@ -101,7 +102,7 @@ class Alignment(object):
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
 
-    def align(self, content):
+    def align(self, content, content_id=None):
         """
         Function aligns or classifies sentences passed to the function.
 
@@ -109,6 +110,7 @@ class Alignment(object):
 
         returns a list of tuples corresponding to the type of provision for each element of the list. 
         """
+        # content_id could be a path to a file 
         test_vec = self.vectorizer.transform(content)
         results = self.cll.predict(test_vec)
         return list(zip(content, list(results)))
@@ -209,9 +211,11 @@ class Alignment(object):
         from statistics import AgreementStatistics
         astats = AgreementStatistics(tupleized)
         aparams = astats.calculate_stats()
-        aparams['doc_gulpease']
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
+
+        # Handle tagging here?
+        # datastore.get_contract(contract_id)
         
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized),
@@ -287,9 +291,9 @@ def testr():
     print("\naligned provisions\n")
     print(aligned_provisions)
     print("\n")
-    tupleized = aligner.continguous_normalize(aligned_provisions)
-    print(tupleized)
-    return tupleized
+    #tupleized = aligner.continguous_normalize(aligned_provisions)
+    #print(tupleized)
+    #return tupleized
 
 def comp():
     print("obtain a corpus...")
@@ -305,6 +309,7 @@ def comp():
 
     paras = aligner1.tokenize(doc)
     aligned_provisions1 = aligner1.align(paras) # aligned_provisions is a list of tuples
+    print(aligned_provisions1)
     paras = aligner2.tokenize(doc)
     aligned_provisions2 = aligner2.align(paras) # aligned_provisions is a list of tuples
 
