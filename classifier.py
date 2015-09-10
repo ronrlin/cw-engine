@@ -18,14 +18,15 @@ class AgreementVectorClassifier(object):
 		self.classifier = None
 
 	def fit(self):
+		"""
+		This function fits the vectorizer and then trains the classifier.
+		"""
 		fileids = list(self.corpus._map.keys())
 		cats = list(self.corpus._map.values())
-		# you should get the list of files and category and build that up together
 		textcomp2 = [self.corpus.raw(fileid) for fileid in fileids]
 		train_vector = self.vectorizer.fit_transform(textcomp2)
 		self.classifier = svm.LinearSVC(class_weight='auto')
 		self.classifier.fit(train_vector, cats)
-
 
 	def classify_file(self, filename):
 		fh = open("data/" + filename, 'r')
@@ -45,7 +46,7 @@ class AgreementVectorClassifier(object):
 		#print(data)
 		data_vectorized = self.vectorizer.transform(data)
 		results = self.classifier.predict(data_vectorized)
-		# TODO: maybe output the size the result vector?
+		# TODO: maybe log the size the result vector?
 		#print("results!")
 		#print(results)
 		return results[0]
@@ -60,8 +61,6 @@ class AgreementNaiveBayesClassifier(object):
 	def fit(self):
 		""" """
 		import random
-		print("categories in nb")
-		print(self.corpus.categories())
 		texts = [(list(self.corpus.words(fileid)), category) for category in self.corpus.categories() for fileid in self.corpus.fileids(category)]
 		random.shuffle(texts)
 		train_set = [(self.get_features(_doc), _class) for (_doc,_class) in texts]		
@@ -144,11 +143,14 @@ def build_corpus(binary=False, binary_param=None):
 	binvals = {}
 	i = 0
 	for f in fileids:
-		# don't make them nested
+		# Note: don't make them nested!
+		# It was unclear why this was the case, but the categories 
+		# are not loaded correctly when you don't provide the cats as a 
+		# parameter nested in a list.
 		#newvals[f] = corpus_details[f]
 		#binvals[f] = cats[i]
-		newvals[f] = corpus_details[f]
-		binvals[f] = cats[i]
+		newvals[f] = [corpus_details[f]]
+		binvals[f] = [cats[i]]
 		i = i + 1
 
 	print("%s files loaded into corpus." % str(len(fileids)))
@@ -157,8 +159,6 @@ def build_corpus(binary=False, binary_param=None):
 		train_corpus = CategorizedPlaintextCorpusReader(CORPUS_PATH, fileids, cat_map=binvals)
 	else:
 		train_corpus = CategorizedPlaintextCorpusReader(CORPUS_PATH, fileids, cat_map=newvals)
-
-	return train_corpus
 
 def get_agreement_classifier_v1(train_corpus):
 	""" """
@@ -267,151 +267,21 @@ def testing_nb():
 	datastore = WiserDatabase()
 	print("Build a corpus of documents...")
 	corpus = build_corpus(binary=False, binary_param='nondisclosure')
+	print("Some categories were identified...")
+	print(corpus.categories())
 	print("Loading the agreement classifier...")
 	classifier = get_agreement_classifier_v3(corpus)
 	print("Application ready to load.")
-	#agreement_type = classifier.classify_file("/home/obironkenobi/Projects/ContractWiser/small-data/nda-0000-0025.txt")
 	"""
 	a doc should be a list of strings : [ "string1", "string2", "string3" .. ]
 	"""
-	doc = corpus.raw("nda-0000-0008.txt")
+	doc = corpus.words("nda-0000-0008.txt")
 	agreement_type = classifier.classify_data(doc)
 	print("The nda agreement is a %s agreement" % agreement_type)
 
 	doc = corpus.raw("nda-0000-0008.txt")
 	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-	print("------")
-
-	doc = corpus.raw("nda-0000-0008.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0009.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0010.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0011.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0012.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0013.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0021.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0022.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement as list is a %s agreement" % agreement_type)
-
-	print("------")
-
-
-	#classifier.show_info()
-	#doc = corpus.words("nda-0000-0005.txt")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("nda-0000-0005.txt")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0005.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The agreement is a %s agreement" % agreement_type)
-	print("------")
-
-	#doc = corpus.words("b9debb6714e6c54e0e3ac431af2215c24784d195418988be65568fd92dfb3fd7")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (convertible) agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("b9debb6714e6c54e0e3ac431af2215c24784d195418988be65568fd92dfb3fd7")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (convertible) agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("b9debb6714e6c54e0e3ac431af2215c24784d195418988be65568fd92dfb3fd7")
-	agreement_type = classifier.classify_data([doc])
-	print("The (convertible) agreement is a %s agreement" % agreement_type)
-	#doc = corpus.words("b9debb6714e6c54e0e3ac431af2215c24784d195418988be65568fd92dfb3fd7")
-	#agreement_type = classifier.classify_data([doc])
-	#print("The (convertible) agreement as list is a %s agreement" % agreement_type)
-	print("------")
-
-	#doc = corpus.words("03dbdc3e21e39d5c5a30535fde6768796f19f83305370aeafd774dfd82d8cb9e")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (indenture) agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("03dbdc3e21e39d5c5a30535fde6768796f19f83305370aeafd774dfd82d8cb9e")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (indenture) agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("03dbdc3e21e39d5c5a30535fde6768796f19f83305370aeafd774dfd82d8cb9e")
-	agreement_type = classifier.classify_data([doc])
-	print("The (indenture) agreement is a %s agreement" % agreement_type)
-	print("------")
-
-	#doc = corpus.words("80af9aebbb2bf04eae5c011717fb091745867e2f2e7e991b74bd6d92c1639990")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (convertible) agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("80af9aebbb2bf04eae5c011717fb091745867e2f2e7e991b74bd6d92c1639990")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (convertible) agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("80af9aebbb2bf04eae5c011717fb091745867e2f2e7e991b74bd6d92c1639990")
-	agreement_type = classifier.classify_data([doc])
-	print("The (convertible) agreement is a %s agreement" % agreement_type)
-	print("------")
-
-	#doc = corpus.words("55b909a381ce30e45586a68cb93e77622e265cc91d923c36ac31faf8ff37d534")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (revolving credit) agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("55b909a381ce30e45586a68cb93e77622e265cc91d923c36ac31faf8ff37d534")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The (revolving credit) agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("55b909a381ce30e45586a68cb93e77622e265cc91d923c36ac31faf8ff37d534")
-	agreement_type = classifier.classify_data([doc])
-	print("The (revolving credit) agreement is a %s agreement" % agreement_type)
-	print("------")
-
-	#doc = corpus.words("nda-0000-0023.txt")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The nda agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("nda-0000-0023.txt")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The nda agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0023.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement is a %s agreement" % agreement_type)
-	print("------")
-
-	#doc = corpus.words("nda-0000-0003.txt")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The nda agreement is a %s agreement" % agreement_type)
-
-	#doc = corpus.raw("nda-0000-0003.txt")
-	#agreement_type = classifier.classify_data(doc)
-	#print("The nda agreement is a %s agreement" % agreement_type)
-
-	doc = corpus.raw("nda-0000-0003.txt")
-	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement is a %s agreement" % agreement_type)
-	print("------")	
+	print("The nda agreement as list is a %s agreement" % agreement_type)	
 
 
 def main():
