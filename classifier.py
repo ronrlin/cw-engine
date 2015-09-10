@@ -160,6 +160,8 @@ def build_corpus(binary=False, binary_param=None):
 	else:
 		train_corpus = CategorizedPlaintextCorpusReader(CORPUS_PATH, fileids, cat_map=newvals)
 
+	return train_corpus
+
 def get_agreement_classifier_v1(train_corpus):
 	""" """
 	count_vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
@@ -282,6 +284,26 @@ def testing_nb():
 	doc = corpus.raw("nda-0000-0008.txt")
 	agreement_type = classifier.classify_data([doc])
 	print("The nda agreement as list is a %s agreement" % agreement_type)	
+
+def testing_both():
+	print("Loading the datastores...")
+	from helper import WiserDatabase
+	datastore = WiserDatabase()
+	print("Build a corpus of documents...")
+	corpus = build_corpus(binary=False, binary_param='nondisclosure')
+	print("Some categories were identified...")
+	print(corpus.categories())
+	print("Loading the agreement classifier...")
+	classifier1 = get_agreement_classifier_v1(corpus)
+	classifier3 = get_agreement_classifier_v3(corpus)
+
+	doc = corpus.words("nda-0000-0008.txt")
+	agreement_type = classifier1.classify_data(doc)
+	print("The nda agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.words("nda-0000-0008.txt")
+	agreement_type = classifier3.classify_data(doc)
+	print("The nda agreement is a %s agreement" % agreement_type)
 
 
 def main():
