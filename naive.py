@@ -29,8 +29,8 @@ class NaiveAlignment(object):
 		provisions_all = load_training_data().items()
 
 		# provisions_reqd is a tuple (provision_name, provision_path)
-		training_file_names = [p[1] for p in provisions_in]
-		provision_names = [p[0] for p in provisions_in]       
+		training_file_names = [p[1] for p in provisions_all]
+		provision_names = [p[0] for p in provisions_all]       
 
 		self.training_corpus = PlaintextCorpusReader(BASE_PATH, training_file_names)
 		print("Corpus is loading %s files" % str(len(self.training_corpus.fileids())))
@@ -47,7 +47,7 @@ class NaiveAlignment(object):
 		#words = [words for words in catcorpus.words()]
 		#filtered_words = [word for word in word_list if word not in stops]
 		# a good place to curate the words_ds which is like the reference db
-		self.words_ds = nltk.FreqDist(words.lower().rstrip('*_-. ') for words in self.training_corpus.words())
+		self.words_ds = nltk.FreqDist(words.lower().rstrip('*_- ') for words in self.training_corpus.words())
 
 	def fit2(self):
 		import random
@@ -59,9 +59,10 @@ class NaiveAlignment(object):
 		#provision_names= ['train_waiver', 'confidential_information']
 		#provision_paths= ['train/train_waiver', 'train/train_confidential_information']
 
-		self.training_corpus = PlaintextCorpusReader(".", provision_paths)
+		#self.training_corpus = PlaintextCorpusReader(".", provision_paths)
 		texts = [(list(sents), re.sub("train/train_", "", fileid)) for fileid in self.training_corpus.fileids() for sents in self.training_corpus.sents(fileid)]
 		# another idea is to make texts by paragraphs, so train on the individual paragraphs, not whole doc
+		print(texts)
 		train_set = [(self.get_features(_doc), _class) for (_doc,_class) in texts]		
 		self.classifier = nltk.NaiveBayesClassifier.train(train_set)		
 
@@ -84,7 +85,13 @@ class NaiveAlignment(object):
 		"""
 		output = []
 		for d in data:
-			val = self.classifier.classify(self.get_features(d))
+			print("the data is")
+			print(d)
+			d = tokenize(d)
+			params = self.get_features(d)
+			print("params")
+			print(params)
+			val = self.classifier.classify(params)
 			output.append(val)
 		#return output
 		return list(zip(data, list(output)))
@@ -95,13 +102,13 @@ class NaiveAlignment(object):
 		:param doc: list of strings 
 		"""
 		doc_words = set(doc)
-		word_features = list(self.words_ds)[:3000]
+		word_features = list(self.words_ds)
 		features = {}
 		for word in word_features:
 			features['contains(%s)' % word] = (word in doc_words)
 		return features
 
-	def show_info(self, n=50):
+	def show_info(self, n=500):
 		self.classifier.show_most_informative_features(n=n)
 
 
@@ -127,7 +134,9 @@ def testing():
 	#corpus = build_corpus()
 
 	#doc = corpus.raw(filename)
-	paras = ['Confidential Information includes, Confidential Information but is not limited to, the following, whether now in existence or hereafter created']
+	#paras = ['Confidential Information includes, Confidential Information but is not limited to, the following, whether now in existence or hereafter created']
+	paras = ["The recipient of Confidential Information shall exercise reasonable care to prevent its disclosure to any third party, and shall limit internal dissemination of Confidential Information within its own organization to individuals whose duties justify the need to know such Confidential Information, and then only provided that there is a clear understanding by such individuals of their obligation to maintain the confidentiality status of such Confidential Information and to restrict its use solely to the Purpose specified herein."]
+	#paras = ["This is a waiver clause. Waiver away."]
 	aligned = aligner.align(paras) # aligned_provisions is a list of tuples
 	print(aligned)
 	return(aligner)
