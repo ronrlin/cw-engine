@@ -248,6 +248,10 @@ class WiserDatabase(object):
       result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : {'agreement_type' : agreement_type}})
       return result
 
+   def contract_tag(self, contract_id, tag_dict={}):
+      result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : tag_dict})
+      return result     
+
    def get_contract_group(self, agreement_type):
       """ Return a dict that represents a contract_group and all its calculated properties """
       result = self.contract_group.find_one({ 'agreement_type' : agreement_type })
