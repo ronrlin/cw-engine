@@ -20,6 +20,7 @@ To refresh the statistics computed for the application, run:
 >> helper.clear_meta_info()
 >> helper.create_provision_group_db()
 >> helper.create_contract_group_db()
+>> helper.load_meta_info()
 
 CW relies on pre-computed statistics, so it's necessary to 
 initialize the statistics about provision_groups and 
@@ -28,7 +29,6 @@ contract_groups.
 >>> import statistics
 >>> statistics.compute_contract_group_info()
 >>> statistics.display_contract_group_info()
-
 >>> statistics.compute_provision_group_info()
 
 About the datasets
@@ -160,6 +160,61 @@ def create_db():
    create_provision_group_db()
    client.close()
 
+def load_meta_info():
+   """
+   Loads some basic meta information into the 'classified' collection.
+   """
+   datastore = WiserDatabase()
+   tag_mutual = {'disclosure_type' : 'mutual'}
+   info = datastore.fetch_by_filename('nda-0000-0001.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0002.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0007.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0016.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0017.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0018.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0019.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0020.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0021.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0022.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0023.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0024.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0025.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0026.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0027.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   datastore.tag_classified(str(info['_id']), {'company' : 'google'})
+   info = datastore.fetch_by_filename('nda-0000-0035.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0038.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+   info = datastore.fetch_by_filename('nda-0000-0041.txt')
+   datastore.tag_classified(str(info['_id']), tag_mutual)
+
+   tag_uni = {'disclosure_type' : 'unilateral'}
+   info = datastore.fetch_by_filename('nda-0000-0032.txt')
+   datastore.tag_classified(str(info['_id']), tag_uni)
+   info = datastore.fetch_by_filename('nda-0000-0039.txt')
+   datastore.tag_classified(str(info['_id']), tag_uni)
+   info = datastore.fetch_by_filename('nda-0000-0040.txt')
+   datastore.tag_classified(str(info['_id']), tag_uni)
+
+   print("loaded the meta data about nondisclosures.")
+
+
 class WiserDatabase(object):
    """ """
    def __init__(self):
@@ -197,6 +252,25 @@ class WiserDatabase(object):
       """
       results = self.collection.find({'category' : category})
       return results
+
+   def fetch_by_classified_tag(self, key, value):
+      """
+      :param keyvalue: a dict() of key => value pair to search using.
+         ie: find({'key' : 'value'})
+
+      Returns a list of fileids.
+      """
+      results = self.collection.find({ key : value })
+      fileids = [record['filename'] for record in results]
+      return fileids      
+
+   def fetch_by_contract_tag(self, key, value):
+      """
+      :param keyvalue: a dict() of key => value pair to search using.
+         ie: find({'key' : 'value'})
+      """
+      results = self.contracts.find({ key : value })
+      return results      
 
    def get_category_names(self):
       """
@@ -248,8 +322,12 @@ class WiserDatabase(object):
       result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : {'agreement_type' : agreement_type}})
       return result
 
-   def contract_tag(self, contract_id, tag_dict={}):
+   def tag_contract(self, contract_id, tag_dict={}):
       result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : tag_dict})
+      return result     
+
+   def tag_classified(self, contract_id, tag_dict={}):
+      result = self.collection.update_one({'_id' : ObjectId(contract_id)}, { '$set' : tag_dict})
       return result     
 
    def get_contract_group(self, agreement_type):
@@ -310,12 +388,37 @@ def testing():
    print("test updating a contract")
    result = datastore.update_contract(saved_id, 'convertible_debt')
 
-   print("test fetch_by_category")
-   records = datastore.fetch_by_category('nondisclosure')
-   for r in records:
-      print("%s - %s" % r['category'], r['filename'])
+   print("add a tag to the contract")
+   result = datastore.contract_tag(saved_id, {'disclosure_type' : 'mutual'})
+
+   print("load the dummy record.")
+   contract = datastore.get_contract(saved_id)
+   print(contract)
+   if isinstance(contract,dict):
+      print("contract is a dict.\n")
+   else:
+      print("ERROR - contract is NOT a dict.\n")
+
+   print("search with a tag")
+   contracts = datastore.fetch_by_contracts_tag('disclosure_type', 'mutual')
+   contracts = list(contracts)
+   print("%s records were returned" % str(len(contracts)))
+   #print(list(contracts))
+   for r in list(contracts):
+      print("%s" % r['agreement_type'])
 
    print("\n")
+
+   # We are not handling an empty result well.
+   print("test fetch_by_category")
+   records = datastore.fetch_by_category('nondisclosure')
+   records = list(records)
+   print("%s records were returned" % str(len(records)))
+   if records is not None:
+      for r in records:
+         print("%s" % r['filename'])
+
+      print("\n")
 
    from structure import AgreementSchema
    provisioner = AgreementSchema()
