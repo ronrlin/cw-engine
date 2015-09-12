@@ -50,28 +50,30 @@ def contract():
 		return json.dumps(user_record)
 
 	elif request.method == 'POST':
+		#use command:
+		#curl -X POST -F "data=@filename" http://127.0.0.1:5000/contract
+		
 		# Check that data was POSTed to the service
+		contract_data = None
 		if not request.data:
-			app.logger.error('request.data was not found')
-			return "Error"
+			f = request.files['data']
+			contract_data = f.stream.getvalue()
 
 		else:
-			# Load a file or use the data field?
 			d = json.loads(request.data)
 			contract_data = d.get('text', None)
 			if not contract_data:
 				app.logger.error('Could not find field named text in request.data')
 				return "Error"
+			contract_data = d['text']
 
-			else:
-				contract_data = d['text']
-				# Analyze the contract
-				agreement_type = classifier.classify_data(contract_data)
-				print("The uploaded agreement was classified as a %s agreement." % agreement_type)
-				# Add contract_data to the datastore
-				contract_id = datastore.save_contract(contract_data, agreement_type)
-				# Return a contract_id 
-				return str(contract_id)
+		# Analyze the contract
+		agreement_type = classifier.classify_data(contract_data)
+		print("The uploaded agreement was classified as a %s agreement." % agreement_type)
+		# Add contract_data to the datastore
+		contract_id = datastore.save_contract(contract_data, agreement_type)
+		# Return a contract_id 
+		return str(contract_id)
 
 @app.route('/contract/<contract_id>', methods=['GET', 'DELETE'])
 def handle_contract(contract_id=None):
