@@ -2,6 +2,7 @@
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
+from nltk.corpus.reader.plaintext import CategorizedPlaintextCorpusReader
 from sklearn import svm
 
 import os
@@ -26,8 +27,7 @@ is critical to being able to calculate relative frequency of certain provisions.
 class Alignment(object):
 
     def __init__(self, schema=None, vectorizer=COUNT_VECT, stop_words=None, all=False):
-        """
-        Create an Alignment object. 
+        """Create an Alignment object. 
 
         :param schema: specify the AgremeentSchema to use for alignment.
         :param vectorizer: specify the type of vectorization method.
@@ -110,10 +110,15 @@ class Alignment(object):
 
         returns a list of tuples corresponding to the type of provision for each element of the list. 
         """
-        # content_id could be a path to a file 
+        # content_id could be an identifier or a path to a file or to the content
+        # this might be helpful when you're ready to tag content and calculate meta
+        # information.  
         test_vec = self.vectorizer.transform(content)
         results = self.cll.predict(test_vec)
         return list(zip(content, list(results)))
+
+    def concepts(self, tupleized):
+        pass
 
     def continguous_normalize(self, tupleized):
         """
@@ -196,27 +201,58 @@ class Alignment(object):
     def get_markup(self, tupleized):
         """ returns content with markup to identify provisions within agreement """
         _markup_list = []
+        # Following block creates div statements with custom ids
+        inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
-            _markup_list.append("<span class='" + get_provision_name_from_file(_type) + "'>" + _block + "</span>")
+            _markup_list.append("<div id='pr-" + get_provision_name_from_file(_type) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type) + "'>" + "<p>" + _block + "</p>" + "</div>")
+            inc[_type] = inc[_type] + 1
+        return " ".join(_markup_list)
 
-        _content = "</p><p>".join(_markup_list)
-        return "<p>" + _content + "</p>"
+    def get_tags(self):
+        tags = self.schema.get_tags()
+        tupled = []
+        output = []
+        for tag in tags:
+            # tag is a tuple
+            tag_name = tag[0]
+            tag_values = tag[1].split(",") # list of all possible values
+            for val in tag_values:
+                val = val.strip(" ")
+                fileids = self.datastore.fetch_by_classified_tag(tag_name, val)
+                thistuple = (zip(fileids, [val] * len(fileids)))
+                #need to append elements of thistuple to tupled
+                for t in thistuple:
+                    tupled.append(t)
+
+            print("%s files will be loaded into corpus." % str(len(tupled)))   
+            mapped = dict(tupled)
+            tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, fileids=mapped.keys(), cat_map=mapped)
+            vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+            from classifier import AgreementVectorClassifier 
+            classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
+            classifier.fit()
+            result = {}
+            result['tag_name'] = tag_name
+            result['_value'] = classifier.classify_file("nda-0000-0029.txt")
+            output.append(result)
+        return output
 
     def get_detail(self, tupleized):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
-        document = dict()
-        provisions = {}
 
         from statistics import AgreementStatistics
         astats = AgreementStatistics(tupleized)
         aparams = astats.calculate_stats()
+        # doc is the text of the agreement, formed by joining all the text blocks in the tuple
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
-
-        # Handle tagging here?
-        # datastore.get_contract(contract_id)
         
+        # _-----------------
+        # TODO:  this after computing 'concepts', so that you can somehow 
+        # pass that information to the get_markup() function!!
+        # document is the response we will return.
+        document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
@@ -226,7 +262,10 @@ class Alignment(object):
             'doc-complexity-score' : aparams['doc_gulpease'],
             'group-similarity-score' : contract_group['group-similarity-score'], # get this from contract_group_info
             'group-complexity-score' : contract_group['group-complexity-score'], # get this from contract_group_info
+            'tags' : self.get_tags(),
         }
+
+        provisions = {}
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             print("get_detail: get the %s provision type" % _type)
@@ -247,6 +286,101 @@ class Alignment(object):
         document['provisions'] = provisions
         document['concepts'] = {}
         return document
+
+def test_tag():
+    """ 
+    !!!This should be removed?!!!
+    """ 
+    from helper import WiserDatabase 
+    datastore = WiserDatabase()
+    schema = AgreementSchema()
+    print("loading the nondisclosure schema...")
+    schema.load_schema("nondisclosure.ini")
+    tags = schema.get_tags()
+    tupled = []
+    """
+    This block is responsible for determining what tags are expected for this agreement.
+    For each tag, this code obtains the expected values and builds a corpus from tagged 
+    agreements.  
+    """ 
+    # 
+    # should we do something about the fileids of a certain type that are not tagged?
+    # should the query pass an agreement_type in the query?
+    output = []
+    for tag in tags:
+        # tag is a tuple
+        tag_name = tag[0]
+        tag_values = tag[1].split(",") # list of all possible values
+        for val in tag_values:
+            val = val.strip(" ")
+            fileids = datastore.fetch_by_classified_tag(tag_name, val)
+            thistuple = (zip(fileids, [val] * len(fileids)))
+            #need to append elements of thistuple to tupled
+            for t in thistuple:
+                tupled.append(t)
+
+        print("%s files will be loaded into corpus." % str(len(tupled)))   
+        mapped = dict(tupled)
+        #print(mapped)
+        tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, fileids=mapped.keys(), cat_map=mapped)
+        vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+        from classifier import AgreementVectorClassifier 
+        classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
+        classifier.fit()
+        result = {}
+        result['tag_name'] = tag_name
+        result['_value'] = classifier.classify_file("nda-0000-0029.txt")
+        output.append(result)
+    return output
+
+def test_concept():
+    from helper import WiserDatabase 
+    datastore = WiserDatabase()
+    schema = AgreementSchema()
+    print("loading the nondisclosure schema...")
+    schema.load_schema("nondisclosure.ini")
+    concepts = schema.get_concepts()
+    tupled = []
+    """
+    This block is responsible for determining what concepts are expected for this agreement.
+    For each concept, the following logic happens:
+    - Each concept has a key to a provision and one or more concept_targets.
+    - If a concept_target is a path to a trainer, then load the trainers.  
+        Pass only the text/provisions that are of the type specified by the key
+        Run a train classifier on the loaded trainers, 
+        Classify the text
+    - If a concept target is a string, then look for a chunk or something
+
+    """ 
+    # 
+    # should we do something about the fileids of a certain type that are not tagged?
+    # should the query pass an agreement_type in the query?
+    output = []
+    fileids = []
+    for c in concepts:
+        # concepts is a tuple
+        concept_key = c[0] # refers to a provision name
+        concept_targets = c[1].split(",") # list of all possible values
+        for val in concept_targets:
+            path_to_trainer = val.strip(" ")
+            # check that path_to_trainer is in fact a trainer
+            # if it's not a path to file, then we need to do something else
+            fileids.append(path_to_trainer)
+
+        print("%s trainers will be loaded." % str(len(fileids)))   
+        concept_corpus = PlaintextCorpusReader(DATA_PATH, fileids=mapped.keys())
+        # We probably want to scroll paragraph by paragraph through the trainers
+        # Vectorize each paragraph
+        #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+        #from classifier import AgreementVectorClassifier 
+        #classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
+        #classifier.fit()
+        #whatcomesout = classifier.classify_file("nda-0000-0029.txt")
+        # TODO: with a concept, might want to add <span> markup to the text blocks.
+        result = {}
+        result['concept_' + concept_key] = { 'concept-description' : '', 'concept-text' : ''}
+        output.append(result)
+    #return output
 
 def testing():
     """ test that the class is working """
@@ -288,9 +422,11 @@ def testr():
     doc = corpus.raw(filename)
     paras = aligner.tokenize(doc)
     aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-    print("\naligned provisions\n")
-    print(aligned_provisions)
-    print("\n")
+    results = aligner.get_markup(aligned_provisions)
+    print(results)
+    #print("\naligned provisions\n")
+    #print(aligned_provisions)
+    #print("\n")
     #tupleized = aligner.continguous_normalize(aligned_provisions)
     #print(tupleized)
     #return tupleized
