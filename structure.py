@@ -146,6 +146,10 @@ def init():
 		'time_period': 'term_defined, term_non_defined'		
 	}
 
+	config['tags'] = {
+		'time_period': 'unilateral, mutual'		
+	}
+
 	with open(SCHEMA_PATH + 'nondisclosure.ini', 'w') as configfile:
 		config.write(configfile)
 
