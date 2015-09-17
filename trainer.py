@@ -18,22 +18,23 @@ class Trainer(object):
 	""" """
 
 	def __init__(self, fileids=None):
-		concept_classifier = self.build_concept_classifier(c[1:])
-		result = concept_classifier.predict(_text)
-		concept_class = c[1].replace("train/train_", "")
-
+		print(fileids)
 		self.concept_corpus = PlaintextCorpusReader(BASE_PATH, fileids)
-		train_concepts = list((' '.join(s), fileid.replace("train/train_", "")) for fileid in fileids for s in concept_corpus.sents(fileid))
+		train_concepts = list((' '.join(s), fileid.replace("train/train_", "")) for fileid in fileids for s in self.concept_corpus.sents(fileid))
 
 		self.vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-		concept_vec = vectorizer.fit_transform(train_concepts)
+		training_text = [tc[0] for tc in train_concepts]
+		concept_vec = self.vectorizer.fit_transform(training_text)
 		target = [tc[1] for tc in train_concepts]
+		# TODO: consider stripping out train/train_ from target
 
 		self.classifier = svm.LinearSVC(class_weight='auto')
-        classifier.fit(concept_vec, target)
+		self.classifier.fit(concept_vec, target)
 
 	def classify_text(self, text):
-		pass
+		data_vectorized = self.vectorizer.transform(text)
+		results = self.classifier.predict(data_vectorized)
+		return results[0]
 
 def testing():
     print("loading the nondisclosure schema...")
@@ -45,9 +46,12 @@ def testing():
 
     text = "This is an example of one paragraph."
     for c in concepts:
-    	print("Check for this concept: " % c[0])
-    	concept_trainer = Trainer(c[1:])
-    	result = concept.trainer.classify_text(text)
+    	print("Check for this concept: %s" % c[0])
+    	paths = c[1].replace(" ", "")
+    	path_list = paths.split(',')
+
+    	concept_trainer = Trainer(path_list)
+    	result = concept_trainer.classify_text(text)
     	print(result)
 
     print("the end.")
