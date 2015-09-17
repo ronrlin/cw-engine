@@ -115,80 +115,48 @@ class Alignment(object):
         # information.  
         test_vec = self.vectorizer.transform(content)
         results = self.cll.predict(test_vec)
-        return list(zip(content, list(results)))
+        tupleized = list(zip(content, list(results)))
 
-    def concepts(self, tupleized):
-        pass
+        concepts = self.schema.get_concepts()
+        new_tuple = []
+        for c in concepts: 
+            ctr = 0
+            for (_text, _type) in tupleized:
+                if (c[0] == _type):
+                    if ("train/train_" in c[1]):
+                        # build a classifier and classify the _text
+                        #fileids = []
+                        #for c in concept_vals:
+                        #    fileids.append(c)
+                        # trainer = Trainer(fileids)
+                        #markup = "<span id='concept-" + concept_class + "-0' class='concept " + concept_class + "'>" + _text + "</span>"
+                        #new_tuple.append((markup, _type))
 
-    def continguous_normalize(self, tupleized):
-        """
-        Function combines contiguous tuples which are the same provision type.  
-        This helps simplify the presentation.  
+                        # this will get deleted
+                        new_tuple.append((_text, _type))
+                    else: 
+                        # search for all the concepts in the _text
+                        for con in c[1:]:
+                            concept_markup = self.markup_concepts(con, text, ctr)
+                            new_tuple.append((concept_markup, _type))
+                            ctr = ctr + 1
+                else:
+                    new_tuple.append((_text, _type))
+        return new_tuple 
+        #return list(zip(content, list(results)))
 
-        :param tupleized: is a list of tuples of the form (["string", "of", "text"], type)
-
-        Returns a normalized tupleized.
-        """
-        provision_types = [e[1] for e in tupleized]
-        provision_text = [e[0] for e in tupleized]
-        contig = []
-        conttypes = []
-        returnlist = []
-        maxlen = len(provision_types)
-        contigctr = 0
-        contig.append(contigctr)
-        conttypes.append(provision_types[0])
-        for i, val in enumerate(provision_types):
-            if (i < maxlen - 1):
-                if (val == provision_types[i+1]):
-                    #they are contig
-                    pass
-                else: 
-                    contigctr += 1
-                    contig.append(contigctr)
-                    conttypes.append(provision_types[i+1])
-
-        trackr = dict()
-        for p in provision_types:
-            trackr[p] = list()
-
-        for i, thistype in enumerate(provision_types):
-            trackr[thistype].append(i)
-
-        m=[]
-        ll = []
-        newdict = (trackr)
-        nn = set(conttypes)
-        for n in nn:
-            print(n)
-            ids = trackr[n]
-            for i in ids:
-                if not ll: #if ll is empty
-                    ll.append(i)
-                else: 
-                    if i == ll[-1]+1:
-                        ll.append(i)
-                    else:
-                        m.append(ll)
-                        ll = []
-                        ll.append(i)        
-            if len(ids) == 1 or ll:
-                m.append(ll)
-                newdict[n] = m
-                ll = []
-                m = []
-        #{'nondisclosure': [[3, 4, 5], [7, 8]], 'intro': [[0, 1, 2]], 'confidential': [[6]]}   
-        ll = []
-        ctr = 0
-        for nn in conttypes:
-            combolists = newdict[nn]
-            comboprovs = combolists.pop(0)
-            combo = ""
-            for c in comboprovs:
-                combo = combo + " " + provision_text[c]
-            this_tuple = (combo, nn)
-            ll.append(this_tuple)
-        return ll
+    def markup_concepts(self, concept, text, counter=0):
+        """ Looks for a concept in text and returns marked up text.
+        --- Parameters ---
+        concept: is a string, like "interest_rate". It contains underscores.  
+        text: is a string
+        """ 
+        text = "The interest rate on the loan is 10 percent with compound gross annual whatever."
+        concept_str = concept.replace("_", " ")
+        idx = text.find(concept_str)
+        idx + len(concept_str)
+        markup = text[:idx] + "<span id='concept-" + concept + "-" + str(counter) + "' class='concept " + concept + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
+        return markup
 
     def tokenize(self, content):
         """ 
@@ -204,11 +172,11 @@ class Alignment(object):
         # Following block creates div statements with custom ids
         inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
-            _markup_list.append("<div id='pr-" + get_provision_name_from_file(_type) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type) + "'>" + "<p>" + _block + "</p>" + "</div>")
+            _markup_list.append("<div id='provision-" + get_provision_name_from_file(_type) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type) + "'>" + "<p>" + _block + "</p>" + "</div>")
             inc[_type] = inc[_type] + 1
         return " ".join(_markup_list)
 
-    def get_tags(self):
+    def get_tags(self, document):
         tags = self.schema.get_tags()
         tupled = []
         output = []
@@ -232,8 +200,9 @@ class Alignment(object):
             classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
             classifier.fit()
             result = {}
-            result['tag_name'] = tag_name
-            result['_value'] = classifier.classify_file("nda-0000-0029.txt")
+            result['type'] = tag_name
+            result['category'] = classifier.classify_data(document)
+            result['reference-info'] = '' #some id into a reference db
             output.append(result)
         return output
 
@@ -262,7 +231,7 @@ class Alignment(object):
             'doc-complexity-score' : aparams['doc_gulpease'],
             'group-similarity-score' : contract_group['group-similarity-score'], # get this from contract_group_info
             'group-complexity-score' : contract_group['group-complexity-score'], # get this from contract_group_info
-            'tags' : self.get_tags(),
+            'tags' : self.get_tags(doc),
         }
 
         provisions = {}
@@ -345,10 +314,6 @@ def test_concept():
     This block is responsible for determining what concepts are expected for this agreement.
     For each concept, the following logic happens:
     - Each concept has a key to a provision and one or more concept_targets.
-    - If a concept_target is a path to a trainer, then load the trainers.  
-        Pass only the text/provisions that are of the type specified by the key
-        Run a train classifier on the loaded trainers, 
-        Classify the text
     - If a concept target is a string, then look for a chunk or something
 
     """ 
@@ -356,26 +321,22 @@ def test_concept():
     # should we do something about the fileids of a certain type that are not tagged?
     # should the query pass an agreement_type in the query?
     output = []
-    fileids = []
+    targets = []
     for c in concepts:
         # concepts is a tuple
         concept_key = c[0] # refers to a provision name
         concept_targets = c[1].split(",") # list of all possible values
         for val in concept_targets:
-            path_to_trainer = val.strip(" ")
-            # check that path_to_trainer is in fact a trainer
-            # if it's not a path to file, then we need to do something else
-            fileids.append(path_to_trainer)
+            concept_str = val.replace("_", " ")
+            targets.append(concept_str)
 
-        print("%s trainers will be loaded." % str(len(fileids)))   
-        concept_corpus = PlaintextCorpusReader(DATA_PATH, fileids=mapped.keys())
-        # We probably want to scroll paragraph by paragraph through the trainers
-        # Vectorize each paragraph
-        #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-        #from classifier import AgreementVectorClassifier 
-        #classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
-        #classifier.fit()
-        #whatcomesout = classifier.classify_file("nda-0000-0029.txt")
+            text = "The interest rate on the loan is 10 percent with compound gross annual whatever."            
+
+            #string.find(s, sub)
+            idx = text.find(concept_str)
+            idx + len(concept_str)
+            newstr = text[:idx] + "<span class='concept " + val + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
+
         # TODO: with a concept, might want to add <span> markup to the text blocks.
         result = {}
         result['concept_' + concept_key] = { 'concept-description' : '', 'concept-text' : ''}
