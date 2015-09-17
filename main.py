@@ -101,7 +101,6 @@ def handle_contract(contract_id=None):
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(agreement_text)
 		aligned_provisions = aligner.align(paras)
-		#aligned_provisions = aligner.contiguous_normalize(paras)
 		detail = aligner.get_detail(aligned_provisions)
 
 		# Create the JSON response to the browser
