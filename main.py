@@ -36,6 +36,21 @@ print("Loading the agreement classifier...")
 classifier = get_agreement_classifier_v3(corpus)
 print("Application ready to load.")
 
+class InvalidUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
 @app.route('/')
 def hello():
     """ Return a friendly HTTP greeting. """
@@ -82,7 +97,8 @@ def handle_contract(contract_id=None):
 		# Query the database on the contract_id
 		contract = datastore.get_contract(contract_id)
 		if (contract is None):
-			return "Contract %s was not found." % contract_id
+			raise InvalidUsage("Contract id %s was not found" % contract_id, status_code=404)
+
 		print(contract)
 		# Check the agreement_type
 		print("accessing the contract dict...")
@@ -140,6 +156,11 @@ def page_not_found(e):
 def application_error(e):
 	""" Return a custom 500 error. """
 	return 'Sorry, unexpected error: {}'.format(e), 500
+
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+	response = json.dumps(error.to_dict())
+	return response, error.status_code
 
 if __name__ == '__main__':
     app.run()    
