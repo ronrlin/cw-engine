@@ -88,13 +88,16 @@ def load_training_data():
 		provisions[provision_name] = "train/" + f
 	return provisions
 
-def get_provision_name_from_file(filename):
+def get_provision_name_from_file(filename, dashed=False):
 	provisions = load_training_data()
 	provision_name = [name for name, fi in provisions.iteritems() if (fi == filename)]
 	if (not provision_name):
-		return "Unknown"
+		return "invalid"
 	else: 
-		return provision_name[0]
+		provision_name = provision_name[0]
+		if (dashed):
+			provision_name = provision_name.replace("_", "-")
+		return provision_name
 
 def init(): 
 	"""

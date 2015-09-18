@@ -153,9 +153,10 @@ class Alignment(object):
         """ 
         text = "The interest rate on the loan is 10 percent with compound gross annual whatever."
         concept_str = concept.replace("_", " ")
+        concept_class = concept.replace("_", "-")
         idx = text.find(concept_str)
-        idx + len(concept_str)
-        markup = text[:idx] + "<span id='concept-" + concept + "-" + str(counter) + "' class='concept " + concept + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
+        #idx + len(concept_str)
+        markup = text[:idx] + "<span id='concept-" + concept_class + "-" + str(counter) + "' class='concept " + concept_class + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
         return markup
 
     def tokenize(self, content):
@@ -172,7 +173,7 @@ class Alignment(object):
         # Following block creates div statements with custom ids
         inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
-            _markup_list.append("<div id='provision-" + get_provision_name_from_file(_type) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type) + "'>" + "<p>" + _block + "</p>" + "</div>")
+            _markup_list.append("<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<p>" + _block + "</p>" + "</div>")
             inc[_type] = inc[_type] + 1
         return " ".join(_markup_list)
 
@@ -256,93 +257,6 @@ class Alignment(object):
         document['concepts'] = {}
         return document
 
-def test_tag():
-    """ 
-    !!!This should be removed?!!!
-    """ 
-    from helper import WiserDatabase 
-    datastore = WiserDatabase()
-    schema = AgreementSchema()
-    print("loading the nondisclosure schema...")
-    schema.load_schema("nondisclosure.ini")
-    tags = schema.get_tags()
-    tupled = []
-    """
-    This block is responsible for determining what tags are expected for this agreement.
-    For each tag, this code obtains the expected values and builds a corpus from tagged 
-    agreements.  
-    """ 
-    # 
-    # should we do something about the fileids of a certain type that are not tagged?
-    # should the query pass an agreement_type in the query?
-    output = []
-    for tag in tags:
-        # tag is a tuple
-        tag_name = tag[0]
-        tag_values = tag[1].split(",") # list of all possible values
-        for val in tag_values:
-            val = val.strip(" ")
-            fileids = datastore.fetch_by_classified_tag(tag_name, val)
-            thistuple = (zip(fileids, [val] * len(fileids)))
-            #need to append elements of thistuple to tupled
-            for t in thistuple:
-                tupled.append(t)
-
-        print("%s files will be loaded into corpus." % str(len(tupled)))   
-        mapped = dict(tupled)
-        #print(mapped)
-        tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, fileids=mapped.keys(), cat_map=mapped)
-        vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-        from classifier import AgreementVectorClassifier 
-        classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
-        classifier.fit()
-        result = {}
-        result['tag_name'] = tag_name
-        result['_value'] = classifier.classify_file("nda-0000-0029.txt")
-        output.append(result)
-    return output
-
-def test_concept():
-    from helper import WiserDatabase 
-    datastore = WiserDatabase()
-    schema = AgreementSchema()
-    print("loading the nondisclosure schema...")
-    schema.load_schema("nondisclosure.ini")
-    concepts = schema.get_concepts()
-    tupled = []
-    """
-    This block is responsible for determining what concepts are expected for this agreement.
-    For each concept, the following logic happens:
-    - Each concept has a key to a provision and one or more concept_targets.
-    - If a concept target is a string, then look for a chunk or something
-
-    """ 
-    # 
-    # should we do something about the fileids of a certain type that are not tagged?
-    # should the query pass an agreement_type in the query?
-    output = []
-    targets = []
-    for c in concepts:
-        # concepts is a tuple
-        concept_key = c[0] # refers to a provision name
-        concept_targets = c[1].split(",") # list of all possible values
-        for val in concept_targets:
-            concept_str = val.replace("_", " ")
-            targets.append(concept_str)
-
-            text = "The interest rate on the loan is 10 percent with compound gross annual whatever."            
-
-            #string.find(s, sub)
-            idx = text.find(concept_str)
-            idx + len(concept_str)
-            newstr = text[:idx] + "<span class='concept " + val + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
-
-        # TODO: with a concept, might want to add <span> markup to the text blocks.
-        result = {}
-        result['concept_' + concept_key] = { 'concept-description' : '', 'concept-text' : ''}
-        output.append(result)
-    #return output
-
 def testing():
     """ test that the class is working """
     schema = AgreementSchema()
@@ -358,6 +272,7 @@ def testing():
     print("Test things on a 'long' paragraph.")
     toks = a.tokenize(content)
     result = a.align(toks)
+    #print(result)
     markup = a.get_markup(result)
     print(markup)
     print("\nOutput the JSON details\n")
