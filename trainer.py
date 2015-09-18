@@ -18,16 +18,14 @@ class Trainer(object):
 	""" """
 
 	def __init__(self, fileids=None):
-		print(fileids)
+		""" Build a Trainer """
 		self.concept_corpus = PlaintextCorpusReader(BASE_PATH, fileids)
 		train_concepts = list((' '.join(s), fileid.replace("train/train_", "")) for fileid in fileids for s in self.concept_corpus.sents(fileid))
-
 		self.vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
 		training_text = [tc[0] for tc in train_concepts]
 		concept_vec = self.vectorizer.fit_transform(training_text)
 		target = [tc[1] for tc in train_concepts]
 		# TODO: consider stripping out train/train_ from target
-
 		self.classifier = svm.LinearSVC(class_weight='auto')
 		self.classifier.fit(concept_vec, target)
 
