@@ -27,6 +27,8 @@ initialize the statistics about provision_groups and
 contract_groups.  
 
 >>> import statistics
+/usr/local/lib/python2.7/dist-packages/numpy/core/fromnumeric.py:2507: VisibleDeprecationWarning: `rank` is deprecated; use the `ndim` attribute or function instead. To find the rank of a matrix see `numpy.linalg.matrix_rank`.
+  VisibleDeprecationWarning)
 >>> statistics.compute_contract_group_info()
 >>> statistics.display_contract_group_info()
 >>> statistics.compute_provision_group_info()
@@ -307,7 +309,8 @@ class WiserDatabase(object):
 
    def save_contract(self, text, agreement_type = None):
       """ Save the text as a contract """
-      new_record = { 'text' : text, 'agreement_type' : agreement_type }
+      from datetime import datetime
+      new_record = { "created_date": datetime.now(), 'text' : text, 'agreement_type' : agreement_type }
       result = self.contracts.insert_one(new_record)
       return result.inserted_id
 
@@ -389,7 +392,7 @@ def testing():
    result = datastore.update_contract(saved_id, 'convertible_debt')
 
    print("add a tag to the contract")
-   result = datastore.contract_tag(saved_id, {'disclosure_type' : 'mutual'})
+   result = datastore.tag_contract(saved_id, {'disclosure_type' : 'mutual'})
 
    print("load the dummy record.")
    contract = datastore.get_contract(saved_id)
@@ -400,7 +403,7 @@ def testing():
       print("ERROR - contract is NOT a dict.\n")
 
    print("search with a tag")
-   contracts = datastore.fetch_by_contracts_tag('disclosure_type', 'mutual')
+   contracts = datastore.fetch_by_contract_tag('disclosure_type', 'mutual')
    contracts = list(contracts)
    print("%s records were returned" % str(len(contracts)))
    #print(list(contracts))
