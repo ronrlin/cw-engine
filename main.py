@@ -66,9 +66,8 @@ def contract():
 		return json.dumps(user_record)
 
 	elif request.method == 'POST':
-		#use command:
-		#curl -X POST -F "data=@filename" http://127.0.0.1:5000/contract
-		
+		# To manually test this service using cURL:
+		# curl -X POST -F "data=@filename" http://127.0.0.1:5000/contract		
 		# Check that data was POSTed to the service
 		contract_data = None
 		if not request.data:
@@ -80,7 +79,7 @@ def contract():
 			contract_data = d.get('text', None)
 			if not contract_data:
 				app.logger.error('Could not find field named text in request.data')
-				return "Error"
+				raise InvalidUsage("Did not provide a parameter named 'text'", status_code=400)
 			contract_data = d['text']
 
 		# Analyze the contract
