@@ -36,6 +36,7 @@ class Alignment(object):
             provision trainers
         """
         self.schema = schema
+        self.concept_dict = None
         provisions = None
 
         if (not all):
@@ -102,7 +103,7 @@ class Alignment(object):
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
 
-    def align(self, content, content_id=None):
+    def old_align(self, content, content_id=None):
         """
         Function aligns or classifies sentences passed to the function.
 
@@ -145,19 +146,45 @@ class Alignment(object):
         return new_tuple 
         #return list(zip(content, list(results)))
 
-    def markup_concepts(self, concept, text, counter=0):
-        """ Looks for a concept in text and returns marked up text.
-        --- Parameters ---
-        concept: is a string, like "interest_rate". It contains underscores.  
-        text: is a string
-        """ 
-        text = "The interest rate on the loan is 10 percent with compound gross annual whatever."
+    def align(self, content):
+        test_vec = self.vectorizer.transform(content)
+        results = self.cll.predict(test_vec)
+        tupleized = list(zip(content, list(results)))
+
+        concepts = self.schema.get_concepts()
+        concept_keys = [a[0] for a in concepts]
+        provisions = self.schema.get_provisions()
+
+        unique_provs = set(results)
+        self.concept_dict = dict.fromkeys(concept_keys, [])
+        for c in concepts: 
+            ctr = 0
+            index = 0
+            for (_text, _type) in tupleized:
+                if (c[0] == _type):
+                    if ("train/train_" in c[1]):
+                        # Some concepts require loading a trainer
+                        pass
+                    else: 
+                        # Some concepts can be obtained otherwise
+                        for con in c[1:]:
+                            dict_val = self._markup_concepts(con, text, index, ctr)
+                            self.concept_dict[con].append(dict_val)
+                            ctr = ctr + 1
+                index = index + 1
+
+        return tupleized
+
+    def _markup_concepts(self, concept_name, text, index, counter=0):
+        #markup = text[:idx] + "<span id='concept-" + concept_class + "-" + str(counter) + "' class='concept " + concept_class + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
         concept_str = concept.replace("_", " ")
-        concept_class = concept.replace("_", "-")
-        idx = text.find(concept_str)
-        #idx + len(concept_str)
-        markup = text[:idx] + "<span id='concept-" + concept_class + "-" + str(counter) + "' class='concept " + concept_class + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
-        return markup
+        _class = concept.replace("_", "-")
+        _start = text.find(concept_str)
+        _index = index
+        _ctr = counter
+        _len = len(concept_str)
+        values = { 'class' : _class, 'index' : _index, 'start' : _start, 'ctr' : _ctr, 'len' : _len }
+        return values
 
     def tokenize(self, content):
         """ 
@@ -170,11 +197,26 @@ class Alignment(object):
     def get_markup(self, tupleized):
         """ returns content with markup to identify provisions within agreement """
         _markup_list = []
-        # Following block creates div statements with custom ids
+        index = 0
+        # this tells you what provisions contain concepts
+        concept_provs = self.concept_dict.keys()
+
         inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
-            _markup_list.append("<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<p>" + _block + "</p>" + "</div>")
+            text = _block
+            # first add concepts
+            if (_type in concept_provs):
+                values = self.concept_dict[_type]
+                if not values:
+                    tc = values.pop(0)
+                    print(tc)
+                    text = text[:tc['_start']] + "<span id='concept-" + tc['_class'] + "-" + str(tc['_ctr']) + "' class='concept " + tc['_class'] + "'>" + text[tc['_start']:tc['_start']+tc['_len']] + "</span>" + text[tc['_start']+tc['_len']:]
+
+            # then wrap in provision markup
+            text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<p>" + text + "</p>" + "</div>"
+            _markup_list.append(text)
             inc[_type] = inc[_type] + 1
+            index = index + 1
         return " ".join(_markup_list)
 
     def get_tags(self, document):
@@ -207,6 +249,19 @@ class Alignment(object):
             output.append(result)
         return output
 
+    def get_concept_detail(self):
+        concept_detail = {}
+        allconcepts = self.schema.get_concepts()
+        for c in allconcepts:
+            c = c[1]
+            c = c.replace(" ", "")
+            c = c.split(",")
+            for concepts in c:
+                concept_class = concepts.replace("train/train_", "")
+                concept_class = concept_class.replace("_", "-")
+                concept_detail[concept_class] = { "description" : "this will say something about this concept", "title" : "a title for the concept"}
+        return concept_detail
+
     def get_detail(self, tupleized):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
@@ -218,10 +273,6 @@ class Alignment(object):
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
         
-        # _-----------------
-        # TODO:  this after computing 'concepts', so that you can somehow 
-        # pass that information to the get_markup() function!!
-        # document is the response we will return.
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized),
@@ -254,7 +305,7 @@ class Alignment(object):
                 # TODO: log an error here
                 provisions[provision_name] = {}
         document['provisions'] = provisions
-        document['concepts'] = {}
+        document['concepts'] = self.get_concept_detail()
         return document
 
 def testing():
