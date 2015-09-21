@@ -11,6 +11,7 @@ from nltk.tokenize import word_tokenize
 from structure import AgreementSchema
 from structure import load_training_data
 from structure import get_provision_name_from_file
+from trainer import Trainer
 
 BASE_PATH = "./"
 DATA_PATH = os.path.join(BASE_PATH, "data/")
@@ -161,24 +162,31 @@ class Alignment(object):
             ctr = 0
             index = 0
             for (_text, _type) in tupleized:
-                if (c[0] == _type):
+                if (c[0] == _type or c[0] in _type):
+                    dict_val = {}
                     if ("train/train_" in c[1]):
                         # Some concepts require loading a trainer
-                        pass
+                        fileids = c[1].replace(" ", "").split(",")
+                        concept_trainer = Trainer(fileids=fileids)
+                        _class = concept_trainer.classify_text(_text)
+                        dict_val = { 'class' : _class.replace("_", "-"), 'index' : index, 'start' : 0, 'ctr' : ctr, 'len' : _text.find(".") - 1 }
+                        provkey = _type.replace("train/train_", "")
+                        self.concept_dict[provkey].append(dict_val)
+                        ctr = ctr + 1 # this tells you how many times you've found this type of provision
                     else: 
                         # Some concepts can be obtained otherwise
                         for con in c[1:]:
                             dict_val = self._markup_concepts(con, text, index, ctr)
-                            self.concept_dict[con].append(dict_val)
-                            ctr = ctr + 1
+                            self.concept_dict[_type].append(dict_val)
+                            ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
-
+        print(self.concept_dict)
         return tupleized
 
     def _markup_concepts(self, concept_name, text, index, counter=0):
         #markup = text[:idx] + "<span id='concept-" + concept_class + "-" + str(counter) + "' class='concept " + concept_class + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
-        concept_str = concept.replace("_", " ")
-        _class = concept.replace("_", "-")
+        concept_str = concept_name.replace("_", " ")
+        _class = concept_name.replace("_", "-")
         _start = text.find(concept_str)
         _index = index
         _ctr = counter
@@ -198,19 +206,16 @@ class Alignment(object):
         """ returns content with markup to identify provisions within agreement """
         _markup_list = []
         index = 0
-        # this tells you what provisions contain concepts
         concept_provs = self.concept_dict.keys()
-
         inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
             text = _block
             # first add concepts
-            if (_type in concept_provs):
-                values = self.concept_dict[_type]
-                if not values:
+            if (get_provision_name_from_file(_type) in concept_provs):
+                values = self.concept_dict[get_provision_name_from_file(_type)]
+                if values:
                     tc = values.pop(0)
-                    print(tc)
-                    text = text[:tc['_start']] + "<span id='concept-" + tc['_class'] + "-" + str(tc['_ctr']) + "' class='concept " + tc['_class'] + "'>" + text[tc['_start']:tc['_start']+tc['_len']] + "</span>" + text[tc['_start']+tc['_len']:]
+                    text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
 
             # then wrap in provision markup
             text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<p>" + text + "</p>" + "</div>"
