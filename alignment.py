@@ -104,49 +104,6 @@ class Alignment(object):
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
 
-    def old_align(self, content, content_id=None):
-        """
-        Function aligns or classifies sentences passed to the function.
-
-        :param content: a list of strings, where the strings are sentences or paragraphs.
-
-        returns a list of tuples corresponding to the type of provision for each element of the list. 
-        """
-        # content_id could be an identifier or a path to a file or to the content
-        # this might be helpful when you're ready to tag content and calculate meta
-        # information.  
-        test_vec = self.vectorizer.transform(content)
-        results = self.cll.predict(test_vec)
-        tupleized = list(zip(content, list(results)))
-
-        concepts = self.schema.get_concepts()
-        new_tuple = []
-        for c in concepts: 
-            ctr = 0
-            for (_text, _type) in tupleized:
-                if (c[0] == _type):
-                    if ("train/train_" in c[1]):
-                        # build a classifier and classify the _text
-                        #fileids = []
-                        #for c in concept_vals:
-                        #    fileids.append(c)
-                        # trainer = Trainer(fileids)
-                        #markup = "<span id='concept-" + concept_class + "-0' class='concept " + concept_class + "'>" + _text + "</span>"
-                        #new_tuple.append((markup, _type))
-
-                        # this will get deleted
-                        new_tuple.append((_text, _type))
-                    else: 
-                        # search for all the concepts in the _text
-                        for con in c[1:]:
-                            concept_markup = self.markup_concepts(con, text, ctr)
-                            new_tuple.append((concept_markup, _type))
-                            ctr = ctr + 1
-                else:
-                    new_tuple.append((_text, _type))
-        return new_tuple 
-        #return list(zip(content, list(results)))
-
     def align(self, content):
         test_vec = self.vectorizer.transform(content)
         results = self.cll.predict(test_vec)
@@ -184,12 +141,17 @@ class Alignment(object):
         return tupleized
 
     def _markup_concepts(self, concept_name, text, index, counter=0):
-        #markup = text[:idx] + "<span id='concept-" + concept_class + "-" + str(counter) + "' class='concept " + concept_class + "'>" + text[idx:idx+len(concept_str)] + "</span>" + text[idx+len(concept_str):]
+        """ This is trivial.  Put a span around exact matches 
+        of the 'concept' in the text.  The 'concept' is just
+        the concept_name with underscores removed.
+        """
         concept_str = concept_name.replace("_", " ")
+        # the index marks the index in tupleized where the concept is found.
+        _index = index
+        # the counter keeps track of the incidence of this concept.
+        _ctr = counter
         _class = concept_name.replace("_", "-")
         _start = text.find(concept_str)
-        _index = index
-        _ctr = counter
         _len = len(concept_str)
         values = { 'class' : _class, 'index' : _index, 'start' : _start, 'ctr' : _ctr, 'len' : _len }
         return values
@@ -218,7 +180,8 @@ class Alignment(object):
                     text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
 
             # then wrap in provision markup
-            text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<p>" + text + "</p>" + "</div>"
+            text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
+            text = "<p>" + text + "</p>" 
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
             index = index + 1
@@ -307,7 +270,8 @@ class Alignment(object):
                     "provision-tag" : "some-label", # computed on the fly
                 }
             else: 
-                # TODO: log an error here
+                # TODO: log an error here and 
+                # raise an error about not having data for this
                 provisions[provision_name] = {}
         document['provisions'] = provisions
         document['concepts'] = self.get_concept_detail()
