@@ -216,6 +216,48 @@ def load_meta_info():
 
    print("loaded the meta data about nondisclosures.")
 
+   tag_nnn = { 'lease_type' : 'nnn'}
+   info = datastore.fetch_by_filename('nnn-0000-0000.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0001.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0002.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0003.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0004.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0005.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0006.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0007.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0008.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0011.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0013.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0014.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0015.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0016.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0017.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0018.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0019.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0020.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   info = datastore.fetch_by_filename('nnn-0000-0021.txt')
+   datastore.tag_classified(str(info['_id']), tag_nnn)
+   datastore.tag_classified(str(info['_id']), { 'company' : 'lowes' })
+
+   print("loaded the meta data about commercial leases.")
 
 class WiserDatabase(object):
    """ """
@@ -232,8 +274,7 @@ class WiserDatabase(object):
       self.provision_group = self.db['provision_group']
 
    def fetch_by_filename(self, filename):
-      """
-      Returns records (key/value pairs) corresponding to records with a certain value
+      """ Returns records (key/value pairs) corresponding to records with a certain value
       for the 'filename' value.
 
       :param filename: string
@@ -244,8 +285,7 @@ class WiserDatabase(object):
       return result
 
    def fetch_by_category(self, category):
-      """
-      Returns records (key/value pairs) corresponding to records with a certain value
+      """ Returns records (key/value pairs) corresponding to records with a certain value
       for the 'category' value.
 
       :param category: matching a query on all records.
@@ -256,7 +296,7 @@ class WiserDatabase(object):
       return results
 
    def fetch_by_classified_tag(self, key, value):
-      """
+      """ Adds a tag to a record that is classified.
       :param keyvalue: a dict() of key => value pair to search using.
          ie: find({'key' : 'value'})
 
@@ -267,7 +307,7 @@ class WiserDatabase(object):
       return fileids      
 
    def fetch_by_contract_tag(self, key, value):
-      """
+      """ Adds a tag to one of the uploaded contracts.
       :param keyvalue: a dict() of key => value pair to search using.
          ie: find({'key' : 'value'})
       """
@@ -275,8 +315,7 @@ class WiserDatabase(object):
       return results      
 
    def get_category_names(self):
-      """
-      Returns a list of the 'category' names.  Categories are different names for 
+      """ Returns a list of the 'category' names.  Categories are different names for 
       the agreements in the ContractWiser repository.  Examples include 'CONVERTIBLE'
       for Convertible Note agreements, etc...
 

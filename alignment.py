@@ -181,7 +181,7 @@ class Alignment(object):
 
             # then wrap in provision markup
             text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-            text = "<p>" + text + "</p>" 
+            text = "<p>" + text + "</p>"
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
             index = index + 1
