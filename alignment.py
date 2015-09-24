@@ -258,10 +258,11 @@ class Alignment(object):
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             print("get_detail: get the %s provision type" % _type)
+            provision_mach_name = get_provision_name_from_file(_type, dashed=False)
             provision_name = get_provision_name_from_file(_type, dashed=True)
-            provision_group_info = self.datastore.get_provision_group(_type)
+            provision_group_info = self.datastore.get_provision_group(provision_mach_name)
             if provision_group_info is not None:
-                provisions[_type] = {
+                provisions[provision_mach_name] = {
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
                     "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
@@ -272,7 +273,7 @@ class Alignment(object):
             else: 
                 # TODO: log an error here and 
                 # raise an error about not having data for this
-                provisions[provision_name] = {}
+                provisions[provision_mach_name] = {}
         document['provisions'] = provisions
         document['concepts'] = self.get_concept_detail()
         return document
@@ -288,9 +289,14 @@ def testing():
     print("Do those provisions look right?\n") 
 
     a = Alignment(schema=schema)
+    filename = "nda-0000-0014.txt"
+    from classifier import build_corpus
+    corpus = build_corpus()
+    doc = corpus.raw(filename)
+
     content = "Confidential Information/Disclosing Party/Receiving Party. Confidential Information is stuff that really really matters."
     print("Test things on a 'long' paragraph.")
-    toks = a.tokenize(content)
+    toks = a.tokenize(doc)
     result = a.align(toks)
     #print(result)
     markup = a.get_markup(result)
