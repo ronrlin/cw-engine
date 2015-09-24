@@ -485,3 +485,21 @@ def testing():
       print("Just like you expected.")
            
    print("\nthe end.")
+
+def test_provision_group(provision_group='nondisclosure'):
+   from structure import AgreementSchema
+   provisioner = AgreementSchema()
+
+   provisioner.load_schema(provision_group)
+   print("The expected provisions...")
+   print(provisioner.get_provisions())
+
+   datastore = WiserDatabase()
+
+   print("Retrieve the provision groups")
+   for (provision_name, trainer_file) in provisioner.get_provisions():
+      print(provision_name)
+      provision_group_info = datastore.get_provision_group(provision_name)
+      print(provision_group_info)
+
+ 
