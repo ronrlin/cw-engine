@@ -314,7 +314,7 @@ def testr():
 
     schema = AgreementSchema()
     schema.load_schema('nondisclosure')
-    aligner = Alignment(schema=schema, vectorizer=TFIDF_VECT)
+    aligner = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=True)
     doc = corpus.raw(filename)
     paras = aligner.tokenize(doc)
     aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
