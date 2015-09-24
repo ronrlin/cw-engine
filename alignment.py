@@ -261,7 +261,7 @@ class Alignment(object):
             provision_name = get_provision_name_from_file(_type, dashed=True)
             provision_group_info = self.datastore.get_provision_group(_type)
             if provision_group_info is not None:
-                provisions[provision_name] = {
+                provisions[_type] = {
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
                     "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
