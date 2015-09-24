@@ -205,7 +205,7 @@ class AgreementStatistics(object):
 		similarity_avg = sum(matrix[0]) / len(matrix[0])
 		return similarity_avg
 
-def compute():
+def compute_classified_stats():
 	""" 
 	Utility function that loads a corpus of agreements to populate db.classified
 	"""
@@ -235,8 +235,6 @@ def compute():
 			doc = corpus.raw(filename)
 			paras = aligner.tokenize(doc)
 			aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-			tupleized = aligner.continguous_normalize(aligned_provisions)
-			print([a[0] for a in tupleized])
 			analysis = AgreementStatistics(tupleized=tupleized, raw=doc)
 			stats = analysis.calculate_stats()
 			doc_gulpease = analysis.calculate_complexity(doc)
