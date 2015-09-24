@@ -258,8 +258,8 @@ class Alignment(object):
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             print("get_detail: get the %s provision type" % _type)
-            provision_name = get_provision_name_from_file(_type)
-            provision_group_info = self.datastore.get_provision_group(provision_name)
+            provision_name = get_provision_name_from_file(_type, dashed=True)
+            provision_group_info = self.datastore.get_provision_group(_type)
             if provision_group_info is not None:
                 provisions[provision_name] = {
                     'consensus-percentage' : 0, # computed on the fly
