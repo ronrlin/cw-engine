@@ -360,11 +360,12 @@ def jessie():
 		#print("Filename %s is %s" % (fi, agreement_type))
 		if (agreement_type == 'useful' or agreement_type == ['useful']):
 			pos = pos + 1
-			# move the file into a useful directory
 		else: 
 			neg = neg + 1
+			import shutil
+			shutil.move("/home/obironkenobi/Projects/ContractWiser/new-data/" + fi, "/home/obironkenobi/Projects/cw-engine/useless/" + fi)
 		ctr = ctr + 1
-		if (ctr > 1000):
+		if (ctr > 5000):
 			break
 		#print("Filename %s is %s" % (fi, agreement_type))
 
