@@ -285,6 +285,11 @@ def testing_nb():
 	agreement_type = classifier.classify_data([doc])
 	print("The nda agreement as list is a %s agreement" % agreement_type)	
 
+	doc = corpus.words("55b909a381ce30e45586a68cb93e77622e265cc91d923c36ac31faf8ff37d534")
+	agreement_type = classifier.classify_data(doc)
+	print("The conv agreement as list is a %s agreement" % agreement_type)	
+
+
 def testing_both():
 	print("Loading the datastores...")
 	from helper import WiserDatabase
@@ -304,6 +309,68 @@ def testing_both():
 	doc = corpus.words("nda-0000-0008.txt")
 	agreement_type = classifier3.classify_data(doc)
 	print("The nda agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.words("55b909a381ce30e45586a68cb93e77622e265cc91d923c36ac31faf8ff37d534")
+	agreement_type = classifier3.classify_data(doc)
+	print("The conv agreement as list is a %s agreement" % agreement_type)	
+
+
+def jessie():
+	useless_path = "/home/obironkenobi/Documents/jessiewants/useless"
+	useless_files = os.listdir(useless_path)
+
+	cats = dict()
+	for fi in useless_files:
+		cats[fi] = ['useless']
+
+	useful_path = "/home/obironkenobi/Documents/jessiewants/useful"
+	useful_files = os.listdir(useful_path)
+
+	for fi in useful_files:
+		cats[fi] = ['useful']
+
+	print(cats)
+
+	fileids = useless_files + useful_files
+	corpus = CategorizedPlaintextCorpusReader("/home/obironkenobi/Documents/jessiewants/both", fileids, cat_map=cats)
+	print(corpus.fileids())
+	print(corpus.categories())
+
+	print(">>>")
+	print(corpus._map.items())
+
+	classifier = get_agreement_classifier_v2(corpus)
+
+	fis = os.listdir("/home/obironkenobi/Projects/ContractWiser/new-data")
+	os.chdir("/home/obironkenobi/Projects/ContractWiser/new-data")
+
+	import codecs
+	pos = 0
+	neg = 0
+	ctr = 0
+	import random
+	random.shuffle(fis)
+	for fi in fis:
+		#print("Let's try to read %s" % fi)
+		fh = codecs.open(fi, 'r')
+		data = fh.read()
+		fh.close()
+
+		agreement_type = classifier.classify_data(data)
+		#print("Filename %s is %s" % (fi, agreement_type))
+		if (agreement_type == 'useful' or agreement_type == ['useful']):
+			pos = pos + 1
+			# move the file into a useful directory
+		else: 
+			neg = neg + 1
+		ctr = ctr + 1
+		if (ctr > 1000):
+			break
+		#print("Filename %s is %s" % (fi, agreement_type))
+
+	total = len(fis)
+	print("there are %s useful files (%s)" % (str(pos), str(pos / total * 100))) 
+	print("there are %s useless files" % str(neg)) 
 
 
 def main():
