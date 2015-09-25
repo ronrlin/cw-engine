@@ -69,7 +69,8 @@ class ProvisionStatistics(object):
 		tfidf = vect.fit_transform(provisions)
 		matrix = (tfidf * tfidf.T).A
 		similarity_avg = sum(matrix[0]) / len(matrix[0])
-		return similarity_avg
+		similarity_avg = similarity_avg * 100
+		return round(similarity_avg, 1)
 
 	def calculate_complexity(self, text=None):
 		"""
@@ -98,7 +99,7 @@ class ProvisionStatistics(object):
 			gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
 			values.append(gulpease)
 
-		return np.mean(values)
+		return round(np.mean(values), 1)
 
 class CorpusStatistics(object):
 	""" """
@@ -120,8 +121,8 @@ class CorpusStatistics(object):
 		vect = TfidfVectorizer(min_df=1)
 		tfidf = vect.fit_transform(docs)
 		matrix = (tfidf * tfidf.T).A
-		similarity_avg = sum(matrix[0]) / len(matrix[0])
-		return similarity_avg
+		similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
+		return round(similarity_avg, 1)
 
 	def calculate_complexity(self, category=None):
 		"""
@@ -141,7 +142,7 @@ class CorpusStatistics(object):
 			sent_count = len(sent_tokenize(text))
 			gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
 			values.append(gulpease)
-		return np.mean(values)
+		return round(np.mean(values), 1)
 
 class AgreementStatistics(object):
 	""" """
@@ -188,7 +189,7 @@ class AgreementStatistics(object):
 		word_count = len(word_tokenize(text))
 		sent_count = len(sent_tokenize(text))
 		gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
-		return gulpease
+		return round(gulpease, 1)
 
 	def calculate_similarity(self, text, corpus):
 		""" 
@@ -202,8 +203,8 @@ class AgreementStatistics(object):
 		vect = TfidfVectorizer(min_df=1)
 		tfidf = vect.fit_transform(docs)
 		matrix = (tfidf * tfidf.T).A
-		similarity_avg = sum(matrix[0]) / len(matrix[0])
-		return similarity_avg
+		similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
+		return round(similarity_avg, 1)
 
 def compute_classified_stats():
 	""" 
