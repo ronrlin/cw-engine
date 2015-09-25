@@ -214,6 +214,7 @@ class Alignment(object):
             result['type'] = tag_name
             result['category'] = classifier.classify_data(document)
             result['reference-info'] = '' #some id into a reference db
+            result['text'] = '' #TODO: this is how the tags get displayed
             output.append(result)
         return output
 
