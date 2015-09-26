@@ -356,7 +356,7 @@ def jessie():
 		data = fh.read()
 		fh.close()
 
-		agreement_type = classifier.classify_data(data)
+		agreement_type = classifier.classify_data([data])
 		#print("Filename %s is %s" % (fi, agreement_type))
 		if (agreement_type == 'useful' or agreement_type == ['useful']):
 			pos = pos + 1
