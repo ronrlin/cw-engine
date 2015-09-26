@@ -264,6 +264,7 @@ class Alignment(object):
             provision_group_info = self.datastore.get_provision_group(provision_mach_name)
             if provision_group_info is not None:
                 provisions[provision_name] = {
+                    'provision-readable' : provision_name,
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
                     "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
