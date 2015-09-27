@@ -133,8 +133,10 @@ class Alignment(object):
                     else: 
                         # Some concepts can be obtained otherwise
                         for con in c[1:]:
-                            dict_val = self._markup_concepts(con, text, index, ctr)
-                            self.concept_dict[_type].append(dict_val)
+                            dict_val = self._markup_concepts(concept_name=con, text=_text, index=index, counter=ctr)
+                            print(self.concept_dict)
+                            provkey = _type.replace("train/train_", "")
+                            self.concept_dict[provkey].append(dict_val)
                             ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
         print(self.concept_dict)
