@@ -71,9 +71,9 @@ class Alignment(object):
 
         """
         if (vectorizer == COUNT_VECT): 
-            self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,2))
+            self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
         elif (vectorizer == TFIDF_VECT):
-            self.vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+            self.vectorizer = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
 
         # TODO: Some of the sents() are really small.  
         start_time = time.time()
@@ -104,6 +104,21 @@ class Alignment(object):
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
 
+    def simplify(self, paras):
+        """ Function takes a list of strings, joins 'short' strings with others. """
+        runAgain = True
+        while runAgain is True:
+            runAgain = False
+            for idx, paragraph in enumerate(paras):
+                characters = len(paragraph)
+                words = nltk.tokenize.word_tokenize(paragraph)
+                if (len(words) <= 10 and idx < len(paras) - 1): #short sentences
+                    nextstr = paras.pop(idx+1)
+                    paras.insert(idx, paragraph + " " + nextstr)
+                    discarded = paras.pop(idx + 1)
+                    runAgain = True
+        return paras
+
     def align(self, content):
         test_vec = self.vectorizer.transform(content)
         results = self.cll.predict(test_vec)
@@ -121,11 +136,12 @@ class Alignment(object):
             for (_text, _type) in tupleized:
                 if (c[0] == _type or c[0] in _type):
                     dict_val = {}
-                    if ("train/train_" in c[1]):
+                    if ("concept/train_" in c[1]):
                         # Some concepts require loading a trainer
                         fileids = c[1].replace(" ", "").split(",")
                         concept_trainer = Trainer(fileids=fileids)
                         _class = concept_trainer.classify_text(_text)
+                        _class = _class.replace("concept/train_", "")
                         dict_val = { 'class' : _class.replace("_", "-"), 'index' : index, 'start' : 0, 'ctr' : ctr, 'len' : _text.find(".") - 1 }
                         provkey = _type.replace("train/train_", "")
                         self.concept_dict[provkey].append(dict_val)
@@ -134,12 +150,10 @@ class Alignment(object):
                         # Some concepts can be obtained otherwise
                         for con in c[1:]:
                             dict_val = self._markup_concepts(concept_name=con, text=_text, index=index, counter=ctr)
-                            print(self.concept_dict)
                             provkey = _type.replace("train/train_", "")
                             self.concept_dict[provkey].append(dict_val)
                             ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
-        print(self.concept_dict)
         return tupleized
 
     def _markup_concepts(self, concept_name, text, index, counter=0):
@@ -228,7 +242,7 @@ class Alignment(object):
             c = c.replace(" ", "")
             c = c.split(",")
             for concepts in c:
-                concept_class = concepts.replace("train/train_", "")
+                concept_class = concepts.replace("concept/train_", "")
                 concept_class = concept_class.replace("_", "-")
                 concept_detail[concept_class] = { "description" : "this will say something about this concept", "title" : "a title for the concept"}
         return concept_detail
@@ -301,6 +315,7 @@ def testing():
     content = "Confidential Information/Disclosing Party/Receiving Party. Confidential Information is stuff that really really matters."
     print("Test things on a 'long' paragraph.")
     toks = a.tokenize(doc)
+
     result = a.align(toks)
     #print(result)
     markup = a.get_markup(result)
@@ -317,14 +332,14 @@ def testing():
     #            print(chunk.label(), ' '.join(c[0] for c in chunk.leaves()))
 
 def testr():
-    filename = "nda-0000-0014.txt"
+    filename = "nda-0000-0033.txt"
     print("obtain a corpus...")
     from classifier import build_corpus
     corpus = build_corpus()
 
     schema = AgreementSchema()
     schema.load_schema('nondisclosure')
-    aligner = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=True)
+    aligner = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=False)
     doc = corpus.raw(filename)
     paras = aligner.tokenize(doc)
     aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
@@ -356,6 +371,57 @@ def comp():
     aligned_provisions2 = aligner2.align(paras) # aligned_provisions is a list of tuples
 
     return(aligner1, aligner2)
+
+def simplify(doc):
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    paras = tokenizer.tokenize(doc)
+    runAgain = True
+    while runAgain is True:
+        runAgain = False
+        for idx, paragraph in enumerate(paras):
+            characters = len(paragraph)
+            words = nltk.tokenize.word_tokenize(paragraph)
+            if (len(words) <= 9 and idx < len(paras) - 1): #short sentences
+                nextstr = paras.pop(idx+1)
+                paras.insert(idx, paragraph + " " + nextstr)
+                discarded = paras.pop(idx + 1)
+                runAgain = True
+
+
+def alignstats():
+    filename = "nda-0000-0033.txt"
+    from classifier import build_corpus
+    corpus = build_corpus()
+    doc = corpus.raw(filename)
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    paras = tokenizer.tokenize(doc)
+    para_meta = []
+    stats = {}
+    index = 0
+    for paragraph in paras:
+        stats['index'] = index
+        stats['characters'] = len(paragraph)
+        stats['returns'] = paragraph.count("\n") #returns with few characters suggests titles or tables
+        stats['period'] = paragraph.count(".") # sentences
+        stats['ellipse'] = paragraph.count("...")
+        stats['dashes'] = paragraph.count("-")
+        stats['commas'] = paragraph.count(",") #commas are a sign of complex sentences
+        stats['semis'] = paragraph.count(";") #commas are a sign of complex sentences
+        stats['underscores'] = paragraph.count("_")
+        stats['colon'] = paragraph.count(":")
+        stats['paren_open'] = paragraph.count("(")
+        stats['paren_close'] = paragraph.count(")")
+        stats['contains_list'] = paragraph.count("(i)") + paragraph.count("(a)") + paragraph.count("(1)") + paragraph.count("1.") + paragraph.count("A.")
+        words = nltk.tokenize.word_tokenize(paragraph)
+        uppercase = 0
+        for word in words:
+            if word.isupper():
+                uppercase += 1
+        stats['uppercase'] = uppercase
+        para_meta.append(stats)
+
+    print(para_meta)
+
 
 """
 Bypass main
