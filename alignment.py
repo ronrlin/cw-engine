@@ -266,8 +266,8 @@ class Alignment(object):
             # doc-similarity is this doc compared to the group
             'doc-similarity-score' : astats.calculate_similarity(doc, self.agreement_corpus), # contract_group['doc-similarity-score'] get this from contract_group_info 
             'doc-complexity-score' : aparams['doc_gulpease'],
-            'group-similarity-score' : contract_group['group-similarity-score'], # get this from contract_group_info
-            'group-complexity-score' : contract_group['group-complexity-score'], # get this from contract_group_info
+            'group-similarity-score' : round(contract_group['group-similarity-score'], 1), # get this from contract_group_info
+            'group-complexity-score' : round(contract_group['group-complexity-score'], 1), # get this from contract_group_info
             'tags' : self.get_tags(doc),
         }
 
@@ -283,9 +283,9 @@ class Alignment(object):
                     'provision-readable' : provision_name,
                     'consensus-percentage' : 0, # computed on the fly
                     "prov-similarity-score" : 0, # computed on the fly
-                    "prov-similarity-avg" : provision_group_info['prov-similarity-avg'], # get this from provision_group_info
+                    "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
                     "prov-complexity-score" : 0, # computed on the fly
-                    "prov-complexity-avg" : provision_group_info['prov-complexity-avg'], # get this from provision_group_info
+                    "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
                     "provision-tag" : "some-label", # computed on the fly
                 }
             else: 
@@ -315,7 +315,7 @@ def testing():
     content = "Confidential Information/Disclosing Party/Receiving Party. Confidential Information is stuff that really really matters."
     print("Test things on a 'long' paragraph.")
     toks = a.tokenize(doc)
-
+    toks = a.simplify(toks)
     result = a.align(toks)
     #print(result)
     markup = a.get_markup(result)
