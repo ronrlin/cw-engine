@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction import DictVectorizer
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 from nltk.corpus.reader.plaintext import CategorizedPlaintextCorpusReader
 from sklearn import svm
@@ -12,6 +13,7 @@ from structure import AgreementSchema
 from structure import load_training_data
 from structure import get_provision_name_from_file
 from trainer import Trainer
+from feature import Feature
 
 BASE_PATH = "./"
 DATA_PATH = os.path.join(BASE_PATH, "data/")
@@ -74,7 +76,7 @@ class Alignment(object):
             self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
         elif (vectorizer == TFIDF_VECT):
             self.vectorizer = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
-
+ 
         # TODO: Some of the sents() are really small.  
         start_time = time.time()
         train_sents = list(' '.join(s) for s in self.training_corpus.sents())
@@ -120,15 +122,22 @@ class Alignment(object):
         return paras
 
     def align(self, content):
+        """ The smartest part.
+        :param content: a list of strings 
+        """
         test_vec = self.vectorizer.transform(content)
         results = self.cll.predict(test_vec)
         tupleized = list(zip(content, list(results)))
+
+        feature = Feature()
+        self.provision_features = feature.text_identify(content)
+        #print([f[1] for f in self.provision_features])
 
         concepts = self.schema.get_concepts()
         concept_keys = [a[0] for a in concepts]
         provisions = self.schema.get_provisions()
 
-        unique_provs = set(results)
+        #unique_provs = set(results)
         self.concept_dict = dict.fromkeys(concept_keys, [])
         for c in concepts: 
             ctr = 0
@@ -155,6 +164,23 @@ class Alignment(object):
                             ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
         return tupleized
+
+    def sanity_check(self, tupleized):
+        """ Suppresses bad classification """ 
+        #provision_features = [("some text", 'features/feature_title_paragraph'),("some text", 'features/feature_title_paragraph', "some text")]
+        provision_features = self.provision_features
+        new_tupleized = []
+        for i, (provision, _type) in enumerate(tupleized):
+            feature_type = provision_features[i][1]
+            if ("title_paragraph" in feature_type):
+                new_tupleized.append(("", provision))
+            elif ("signature_line" in feature_type):
+                new_tupleized.append(("", provision))
+            elif ("definitions" in feature_type):
+                new_tupleized.append((_type, provision))
+            elif ("normal_text" in feature_type):
+                new_tupleized.append((_type, provision))
+        return new_tupleized
 
     def _markup_concepts(self, concept_name, text, index, counter=0):
         """ This is trivial.  Put a span around exact matches 
@@ -311,19 +337,17 @@ def testing():
     from classifier import build_corpus
     corpus = build_corpus()
     doc = corpus.raw(filename)
-
-    content = "Confidential Information/Disclosing Party/Receiving Party. Confidential Information is stuff that really really matters."
-    print("Test things on a 'long' paragraph.")
     toks = a.tokenize(doc)
     toks = a.simplify(toks)
     result = a.align(toks)
     #print(result)
     markup = a.get_markup(result)
-    print(markup)
-    print("\nOutput the JSON details\n")
 
     import json
     print(json.dumps(a.get_detail(result)))
+
+    print("what features we found")
+    print([f[1] for f in a.provision_features])
 
     """ example of some simple chunking """ 
     #for sent in testset: 
@@ -332,19 +356,27 @@ def testing():
     #            print(chunk.label(), ' '.join(c[0] for c in chunk.leaves()))
 
 def testr():
-    filename = "nda-0000-0033.txt"
+    filename = "nda-0000-0034.txt"
     print("obtain a corpus...")
     from classifier import build_corpus
     corpus = build_corpus()
-
+    from structure import AgreementSchema
     schema = AgreementSchema()
     schema.load_schema('nondisclosure')
-    aligner = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=False)
+    #from Alignment import alignment
+    aligner = Alignment(schema=schema, vectorizer=2, all=False)
     doc = corpus.raw(filename)
     paras = aligner.tokenize(doc)
     aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-    results = aligner.get_markup(aligned_provisions)
-    print(results)
+    print("aligned provisions")
+    print(aligned_provisions)
+    print("what features we found")
+    print([f[1] for f in aligner.provision_features])
+    res = aligner.sanity_check(aligned_provisions)
+    print("sanity check")
+    print(res)
+    #results = aligner.get_markup(aligned_provisions)
+    #print(results)
     #print("\naligned provisions\n")
     #print(aligned_provisions)
     #print("\n")
@@ -389,6 +421,25 @@ def simplify(doc):
 
 
 def alignstats():
+    """ paras (list of strings) should be the param in """
+    """ just thinking that here are some ideas of training categories to look for:
+
+    title_paragraph
+    signature_line
+    table
+    table_of_contents
+    definition_list
+    list
+
+    paragraph that is a title/opening paragraph
+    signature Lines
+    payment tables
+    table of contents
+    definitions list
+    list
+
+     """
+
     filename = "nda-0000-0033.txt"
     from classifier import build_corpus
     corpus = build_corpus()
@@ -409,6 +460,10 @@ def alignstats():
         stats['semis'] = paragraph.count(";") #commas are a sign of complex sentences
         stats['underscores'] = paragraph.count("_")
         stats['colon'] = paragraph.count(":")
+        if index > 0:
+            stats['colon_prev'] = para_meta[indexs-1]['colon']
+        else:
+            stats['colon_prev'] = 0
         stats['paren_open'] = paragraph.count("(")
         stats['paren_close'] = paragraph.count(")")
         stats['contains_list'] = paragraph.count("(i)") + paragraph.count("(a)") + paragraph.count("(1)") + paragraph.count("1.") + paragraph.count("A.")
@@ -419,9 +474,44 @@ def alignstats():
                 uppercase += 1
         stats['uppercase'] = uppercase
         para_meta.append(stats)
+        index = index + 1
 
     print(para_meta)
 
+    from sklearn.feature_extraction import DictVectorizer
+    v = DictVectorizer(sparse=False)
+    X = v.fit_transform(para_meta)
+
+
+def sanity_check(tupleized=None):
+    provision_features = [("some text", 'features/feature_title_paragraph'),("some text", 'features/feature_title_paragraph', "some text")]
+    tupleized = provision_features
+    new_tupleized = []
+    for i, (provision, _type) in enumerate(tupleized):
+        feature_type = provision_features[i][1]
+
+        if ("title_paragraph" in feature_type):
+            new_tupleized.append(("", provision))
+        elif ("signature_line" in feature_type):
+            new_tupleized.append(("", provision))
+        elif ("definitions" in feature_type):
+            new_tupleized.append((_type, provision))
+        elif ("normal_text" in feature_type):
+            new_tupleized.append((_type, provision))
+
+
+"""
+>>> from sklearn.feature_extraction import DictVectorizer
+>>> v = DictVectorizer(sparse=False)
+>>> D = [{'foo': 1, 'bar': 2}, {'foo': 3, 'baz': 1}]
+>>> X = v.fit_transform(D)
+>>> X
+array([[ 2.,  0.,  1.],
+       [ 0.,  1.,  3.]])
+>>> v.inverse_transform(X) ==         [{'bar': 2.0, 'foo': 1.0}, {'baz': 1.0, 'foo': 3.0}]
+True
+>>> v.transform({'foo': 4, 'unseen_feature': 3})
+"""
 
 """
 Bypass main
