@@ -74,9 +74,30 @@ class Alignment(object):
         """
         if (vectorizer == COUNT_VECT): 
             self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
+            self.vectorizer2 = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
         elif (vectorizer == TFIDF_VECT):
             self.vectorizer = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
- 
+            self.vectorizer2 = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
+
+        # Try using BlanklineTokenizer
+        start_time = time.time()
+        from nltk.tokenize import BlanklineTokenizer
+        tokenizer = BlanklineTokenizer()
+        target2 = []
+        train_sents2 = []
+        for fileid in self.training_corpus.fileids():
+            doc = self.training_corpus.raw(fileid)
+            doc = tokenizer.tokenize(doc)
+            target2 += [fileid] * len(doc)
+            train_sents2 += doc
+        end_time = time.time()
+        print("Time to use blankline tokenizer on sentences of training texts is %s seconds" % (end_time - start_time))        
+
+        start_time = time.time()
+        train_vec2 = self.vectorizer2.fit_transform(train_sents2)
+        end_time = time.time()
+        print("Time to fit/transform vector is %s seconds" % (end_time - start_time))
+
         # TODO: Some of the sents() are really small.  
         start_time = time.time()
         train_sents = list(' '.join(s) for s in self.training_corpus.sents())
@@ -102,6 +123,9 @@ class Alignment(object):
         start_time = time.time()
         self.cll = svm.LinearSVC(class_weight='auto')
         self.cll.fit(train_vec, target)
+
+        self.cll2 = svm.LinearSVC(class_weight='auto')
+        self.cll2.fit(train_vec2, target2)
         end_time = time.time()
         print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
         print("\nReady for alignment!")
@@ -121,13 +145,23 @@ class Alignment(object):
                     runAgain = True
         return paras
 
-    def align(self, content):
+    def aligncore(self, content, version=1):
+        tupleized = []
+        if version == 1:
+            test_vec = self.vectorizer.transform(content)
+            results = self.cll.predict(test_vec)
+            tupleized = list(zip(content, list(results)))
+        elif version == 2:
+            test_vec = self.vectorizer2.transform(content)
+            results = self.cll2.predict(test_vec)
+            tupleized = list(zip(content, list(results)))
+        return tupleized
+
+    def align(self, content, version=1):
         """ The smartest part.
         :param content: a list of strings 
         """
-        test_vec = self.vectorizer.transform(content)
-        results = self.cll.predict(test_vec)
-        tupleized = list(zip(content, list(results)))
+        tupleized = self.aligncore(version=1, content=content)
 
         feature = Feature()
         self.provision_features = feature.text_identify(content)
@@ -173,13 +207,15 @@ class Alignment(object):
         for i, (provision, _type) in enumerate(tupleized):
             feature_type = provision_features[i][1]
             if ("title_paragraph" in feature_type):
-                new_tupleized.append(("", provision))
+                new_tupleized.append((provision, ""))
             elif ("signature_line" in feature_type):
-                new_tupleized.append(("", provision))
+                new_tupleized.append((provision, ""))
             elif ("definitions" in feature_type):
-                new_tupleized.append((_type, provision))
+                new_tupleized.append((provision, _type))
             elif ("normal_text" in feature_type):
-                new_tupleized.append((_type, provision))
+                new_tupleized.append((provision, _type))
+            else:
+                new_tupleized.append((provision, _type))
         return new_tupleized
 
     def _markup_concepts(self, concept_name, text, index, counter=0):
@@ -328,21 +364,22 @@ def testing():
     print("loading the nondisclosure schema...")
     schema.load_schema("nondisclosure.ini")
     provisions = schema.get_provisions()
+    print("we're looking for...")
     print(provisions)
-    print("\n\n")
-    print("Do those provisions look right?\n") 
-
     a = Alignment(schema=schema)
     filename = "nda-0000-0014.txt"
     from classifier import build_corpus
     corpus = build_corpus()
     doc = corpus.raw(filename)
+    print("tokenize raw text into sentences.")
     toks = a.tokenize(doc)
+    print("combine really short sentences.")
     toks = a.simplify(toks)
+    print("alignment...")
     result = a.align(toks)
-    #print(result)
+    print("check on the markup")
     markup = a.get_markup(result)
-
+    print("returns json")
     import json
     print(json.dumps(a.get_detail(result)))
 
@@ -404,21 +441,96 @@ def comp():
 
     return(aligner1, aligner2)
 
-def simplify(doc):
-    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-    paras = tokenizer.tokenize(doc)
-    runAgain = True
-    while runAgain is True:
-        runAgain = False
-        for idx, paragraph in enumerate(paras):
-            characters = len(paragraph)
-            words = nltk.tokenize.word_tokenize(paragraph)
-            if (len(words) <= 9 and idx < len(paras) - 1): #short sentences
-                nextstr = paras.pop(idx+1)
-                paras.insert(idx, paragraph + " " + nextstr)
-                discarded = paras.pop(idx + 1)
-                runAgain = True
+def build_provision_tests():
+    provisions = []
+    ##
+    ##
+    provision_text = """2. Confidential Information: Confidential information means any information disclosed to by one party to the other,
+either directly or indirectly in writing, orally or by inspection of tangible or intangible objects, including without
+limitation documents, business plans, source code, software, documentation, financial analysis, marketing plans,
+customer names, customer list, customer data. Confidential Information may also include information disclosed to a
+party by third parties at the direction of a Disclosing Party. Confidential Information shall not, however, include any
+information which the Receiving party can establish (i) was publicly known and made generally available in the public
+domain prior to the time of disclosure; (ii) becomes publicly known and made generally available after disclosure
+through no action or inaction of Receiving Party; or (iii) is in the possession of Receiving Party, without confidentiality
+restrictions, at the time of disclosure by the Disclosing Party as shown by Receiving Party's files and records
+immediately prior to the time of disclosure. The party disclosing the Confidential Information shall be referred to as
+"Disclosing Party" in the Agreement and the party receiving the Confidential Information shall be referred to as
+"Receiving Party" in the Agreement.    
+    """
+    provisions.append(provision_text)
+    ##
+    ##
+    provision_text = """
+    2. Each party acknowledges and agrees that the Confidential Information of the other party is a valuable asset of such party and has competitive value.   
+    """
+    provisions.append(provision_text)    
+    ##
+    ##
+    provision_text = """4. The term "Confidential Information" shall not include information which (a) is or becomes generally available to the public
+other than as a result of a disclosure by the Recipient or its Representatives, (b) is or becomes available to the Recipient
+from a source other than the Disclosing Party or its Representatives, provided that such source obtained such information
+lawfully and is not, and was not, bound by a confidentiality agreement with, or obligation to, the Disclosing Party or any of its
+affiliates or Representatives. """
+    provisions.append(provision_text)
+    ##
+    ##
+    provision_text = """
+        13. This Agreement shall survive the termination of any negotiations or discussions between the
+        parties hereto for a period of two years and may not be modified or terminated, in whole or in part, and no release
+        hereunder shall be effective except by means of a written instrument executed by the parties hereto.
+    """
+    ##
+    ##
+    provision_text = """1. Definition of Confidential Information. For purposes of this Agreement, "Confidential Information" shall include all information or material that has or could have commercial value or other utility in the business in which Disclosing Party is engaged. If Confidential Information is in written form, the Disclosing Party shall label or stamp the materials with the word "Confidential" or some similar warning. If Confidential Information is transmitted orally, the Disclosing Party shall promptly provide a writing indicating that such oral communication constituted Confidential Information.
+    """
+    provisions.append(provision_text)
+    ##
+    ##
+    provision_text = """5.    In the event that the Recipient shall breach this Agreement, or in the event that a breach appears to be imminent, the Disclosing Party shall be entitled to all legal and equitable remedies afforded it by law, and in addition may recover all reasonable costs and attorneys' fees incurred in seeking such remedies.  If the Confidential Information is sought by any third party, including by way of subpoena or other court process, the Recipient shall inform the Disclosing Party of the request in sufficient time to permit the Disclosing Party to object to and, if necessary, seek court intervention to prevent the disclosure.
+    """    
+    provisions.append(provision_text)  
+    ##
+    ##
+    provision_text = """Basic Nondisclosure Agreement"""
+    provisions.append(provision_text)
+    ##
+    ##
+    provision_text = """
+This Nondisclosure Agreement (the "Agreement") is entered into by and between _______________ with its principal offices at _______________ ("Disclosing Party") and _______________, located at _______________ ("Receiving Party") for the purpose of preventing the unauthorized disclosure of Confidential Information as defined below. The parties agree to enter into a confidential relationship with respect to the disclosure of certain proprietary and confidential information ("Confidential Information")."""    
+    provisions.append(provision_text)  
 
+    return provisions  
+
+def newtest(version=1, sanity=False):
+    """ test that the class is working """
+    schema = AgreementSchema()
+    print("loading the nondisclosure schema...")
+    schema.load_schema("nondisclosure.ini")
+    provisions = schema.get_provisions()
+    print("we're looking for...")
+    print(provisions)
+    a = Alignment(schema=schema)
+    provisions = build_provision_tests()
+
+    result = None
+    if version == 1:
+        print("using version 1")
+        result = a.align(provisions, version=1)
+    elif version == 2:
+        print("using version 2")
+        result = a.align(provisions, version=2)
+
+    if sanity:
+        print(">> sane results <<")
+        result = a.sanity_check(result)
+    else:
+        print(">> normal results <<")
+
+    for i, r in enumerate(result):
+        print("=====")
+        print(r[0])
+        print(">>" + r[1] + " | " + a.provision_features[i][1])
 
 def alignstats():
     """ paras (list of strings) should be the param in """
@@ -482,22 +594,6 @@ def alignstats():
     v = DictVectorizer(sparse=False)
     X = v.fit_transform(para_meta)
 
-
-def sanity_check(tupleized=None):
-    provision_features = [("some text", 'features/feature_title_paragraph'),("some text", 'features/feature_title_paragraph', "some text")]
-    tupleized = provision_features
-    new_tupleized = []
-    for i, (provision, _type) in enumerate(tupleized):
-        feature_type = provision_features[i][1]
-
-        if ("title_paragraph" in feature_type):
-            new_tupleized.append(("", provision))
-        elif ("signature_line" in feature_type):
-            new_tupleized.append(("", provision))
-        elif ("definitions" in feature_type):
-            new_tupleized.append((_type, provision))
-        elif ("normal_text" in feature_type):
-            new_tupleized.append((_type, provision))
 
 
 """
