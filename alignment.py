@@ -161,7 +161,8 @@ class Alignment(object):
         """ The smartest part.
         :param content: a list of strings 
         """
-        tupleized = self.aligncore(version=1, content=content)
+        print("using version %s" % str(version))
+        tupleized = self.aligncore(content=content, version=version)
 
         feature = Feature()
         self.provision_features = feature.text_identify(content)
@@ -245,24 +246,26 @@ class Alignment(object):
     def get_markup(self, tupleized):
         """ returns content with markup to identify provisions within agreement """
         _markup_list = []
-        index = 0
         concept_provs = self.concept_dict.keys()
         inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
             text = _block
-            # first add concepts
-            if (get_provision_name_from_file(_type) in concept_provs):
-                values = self.concept_dict[get_provision_name_from_file(_type)]
-                if values:
-                    tc = values.pop(0)
-                    text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
+            if not _type:
+                text = "<p><div>" + text + "</div></p>"
+            else: 
+                # first add concepts
+                if (get_provision_name_from_file(_type) in concept_provs):
+                    values = self.concept_dict[get_provision_name_from_file(_type)]
+                    if values:
+                        tc = values.pop(0)
+                        text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
 
-            # then wrap in provision markup
-            text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-            text = "<p>" + text + "</p>"
+                # then wrap in provision markup
+                text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
+                text = "<p>" + text + "</p>"
+
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
-            index = index + 1
         return " ".join(_markup_list)
 
     def get_tags(self, document):
@@ -306,7 +309,7 @@ class Alignment(object):
             for concepts in c:
                 concept_class = concepts.replace("concept/train_", "")
                 concept_class = concept_class.replace("_", "-")
-                concept_detail[concept_class] = { "description" : "this will say something about this concept", "title" : "a title for the concept"}
+                concept_detail[concept_class] = { "description" : "this will say something about %s" % concept_class, "title" : concept_class}
         return concept_detail
 
     def get_detail(self, tupleized):
@@ -334,9 +337,9 @@ class Alignment(object):
         }
 
         provisions = {}
+
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
-            print("get_detail: get the %s provision type" % _type)
             provision_mach_name = get_provision_name_from_file(_type, dashed=False)
             provision_name = get_provision_name_from_file(_type, dashed=True)
             provision_group_info = self.datastore.get_provision_group(provision_mach_name)
@@ -344,16 +347,17 @@ class Alignment(object):
                 provisions[provision_name] = {
                     'provision-readable' : provision_name,
                     'consensus-percentage' : 0, # computed on the fly
-                    "prov-similarity-score" : 0, # computed on the fly
+                    "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
                     "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
-                    "prov-complexity-score" : 0, # computed on the fly
+                    "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
                     "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
-                    "provision-tag" : "some-label", # computed on the fly
+                    #"provision-tag" : "some-label", # computed on the fly
                 }
             else: 
                 # TODO: log an error here and 
                 # raise an error about not having data for this
                 provisions[provision_name] = {}
+
         document['provisions'] = provisions
         document['concepts'] = self.get_concept_detail()
         return document

@@ -36,6 +36,8 @@ print("Loading the agreement classifier...")
 classifier = get_agreement_classifier_v3(corpus)
 print("Application ready to load.")
 
+sane_mode = True
+
 class InvalidUsage(Exception):
     status_code = 400
 
@@ -117,7 +119,17 @@ def handle_contract(contract_id=None):
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(agreement_text)
 		paras = aligner.simplify(paras)
-		aligned_provisions = aligner.align(paras)
+		aligned_provisions = aligner.align(paras, version=1)
+
+		if sane_mode:
+			print("sane mode is ON.")
+			print("These document features were identified: ")
+			print([f[1] for f in aligner.provision_features])
+			aligned_provisions = aligner.sanity_check(aligned_provisions)
+			print(aligned_provisions)
+		else:
+			print("sane mode is OFF.")
+
 		detail = aligner.get_detail(aligned_provisions)
 
 		# Create the JSON response to the browser
