@@ -58,6 +58,19 @@ agreements = [
 
 """
 
+def create_universe():
+   """ Create all databases """
+   create_db()
+   create_contract_db()
+   create_contract_group_db()
+   create_provision_group_db()
+   load_meta_info()
+   # next step... load computed information.
+   import statistics as s
+   s.compute_classified_stats()
+   s.compute_contract_group_info()
+   s.compute_provision_group_info()
+
 def clear_db():
    """ Empty the database """
    client = MongoClient('localhost', 27017)
@@ -141,7 +154,7 @@ def create_db():
    print("created wiser_db...")
    collection = db['classified']
    print("created 'classified' collection...")
-   #collection.createIndex( { 'filename': "hashed" } )
+   collection.create_index([('filename', 1)], unique=True)
    import csv
    agreements = list()
 
@@ -157,9 +170,6 @@ def create_db():
    result = collection.insert_many(agreements)
    print("new records created")
    print(len(result.inserted_ids))
-   create_contract_db()
-   create_contract_group_db()
-   create_provision_group_db()
    client.close()
 
 def load_meta_info():
@@ -308,6 +318,17 @@ class WiserDatabase(object):
       fileids = [record['filename'] for record in results]
       return fileids      
 
+   def fetch_by_tag(self, keyvalue):
+      """ Adds a tag to a record that is classified.
+      :param keyvalue: a dict() of key => value pair to search using.
+         ie: find({'key' : 'value'})
+
+      Returns a list of fileids.
+      """
+      results = self.collection.find(keyvalue)
+      fileids = [record['filename'] for record in results]
+      return fileids            
+
    def fetch_by_contract_tag(self, key, value):
       """ Adds a tag to one of the uploaded contracts.
       :param keyvalue: a dict() of key => value pair to search using.
@@ -336,6 +357,7 @@ class WiserDatabase(object):
       """ """
       parameters['filename'] = filename
       result = self.collection.replace_one({'filename' : filename}, parameters)
+      print("matched_count : %d" % result.matched_count)
       return result
 
    def get_contract(self, contract_id):
