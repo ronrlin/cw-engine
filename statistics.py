@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from __future__ import division
+
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from scipy.spatial.distance import cosine
@@ -158,6 +160,23 @@ class AgreementStatistics(object):
 		"""
 		return self.output
 
+	def get_consensus(self, corpus, provision_type):
+		""" Finds the incidence of provision_type in the corpus provided.    
+		"""
+		#print("get_consensus for %s" % provision_type)
+		if corpus and len(corpus.fileids()) > 0:
+			#print("there are %s files in the corpus" % str(len(corpus.fileids())))
+			cnt = 0
+			for fileid in corpus.fileids():
+				search_info = { "filename" : fileid, "has_" + provision_type.replace("train/train_", "") : True}
+				datastore = WiserDatabase()
+				fs = datastore.fetch_by_tag(search_info)
+				if len(fs):
+					cnt = cnt + 1
+			return round(100 * (cnt / len(corpus.fileids())), 0)
+		else:
+			return -1
+
 	def calculate_stats(self):
 		""" """
 		word_count = 0
@@ -172,8 +191,9 @@ class AgreementStatistics(object):
 		for (_block, _type) in self.tupleized:
 			words = word_tokenize(_block)
 			word_count = word_count + len(words)
-			parameters["has_" + _type] = True
-			parameters[_type + "_gulpease"] = self.calculate_complexity(_block)
+			if _type:
+				parameters["has_" + _type.replace("train/train_", "")] = True
+			parameters[_type.replace("train/train_", "") + "_gulpease"] = self.calculate_complexity(_block)
 
 		self.output = parameters
 		return parameters
@@ -217,10 +237,6 @@ def compute_classified_stats():
 	datastore = WiserDatabase()
 	cnt = 0
 	for filename in corpus.fileids():
-		cnt = cnt + 1
-		if cnt > 1:
-			print("\nend")
-			return
 		print("analyzing file %s..." % filename)
 		record = datastore.fetch_by_filename(filename)
 		print("record contains: ")
@@ -231,15 +247,25 @@ def compute_classified_stats():
 			category = record['category']
 			schema = AgreementSchema()
 			schema.load_schema(category)
-			aligner = Alignment(schema=schema)
+			aligner = Alignment(schema=schema, vectorizer=2, all=True)
 			doc = corpus.raw(filename)
 			paras = aligner.tokenize(doc)
-			aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-			analysis = AgreementStatistics(tupleized=tupleized, raw=doc)
+			aligned_provisions = aligner.align(paras, version=2) # aligned_provisions is a list of tuples
+			aligned_provisions = aligner.sanity_check(aligned_provisions)
+
+			analysis = AgreementStatistics(tupleized=aligned_provisions)
 			stats = analysis.calculate_stats()
 			doc_gulpease = analysis.calculate_complexity(doc)
 			stats['doc_gulpease2'] = doc_gulpease
 			stats['category'] = category
+
+			for (_block, _type) in aligned_provisions:
+				if _type: 
+					if ("train/train_" in _type):
+						stats['has_' + _type.replace("train/train_", "")] = True
+					else:
+						stats['has_' + _type] = True
+
 			print("update the datastore")
 			result = datastore.update_record(filename=filename, parameters=stats)
 

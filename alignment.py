@@ -278,24 +278,34 @@ class Alignment(object):
             tag_values = tag[1].split(",") # list of all possible values
             for val in tag_values:
                 val = val.strip(" ")
-                fileids = self.datastore.fetch_by_classified_tag(tag_name, val)
+                #fileids = self.datastore.fetch_by_classified_tag(tag_name, val)
+                print("search terms %s : %s" % (tag_name, val))
+                fileids = self.datastore.fetch_by_tag({tag_name : val})
+                print("returns: %s" % fileids)
                 thistuple = (zip(fileids, [val] * len(fileids)))
                 #need to append elements of thistuple to tupled
                 for t in thistuple:
                     tupled.append(t)
 
-            print("%s files will be loaded into corpus." % str(len(tupled)))   
-            mapped = dict(tupled)
-            tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, fileids=mapped.keys(), cat_map=mapped)
-            vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-            from classifier import AgreementVectorClassifier 
-            classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
-            classifier.fit()
+            print("%s files will be loaded into tag corpus." % str(len(tupled)))   
             result = {}
-            result['type'] = tag_name
-            result['category'] = classifier.classify_data(document)
-            result['reference-info'] = '' #some id into a reference db
-            result['text'] = '' #TODO: this is how the tags get displayed
+            if (len(tupled) > 1):
+                mapped = dict(tupled)
+                tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, fileids=mapped.keys(), cat_map=mapped)
+                vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                from classifier import AgreementVectorClassifier 
+                classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
+                classifier.fit()
+                result['type'] = tag_name
+                result['category'] = classifier.classify_data(document)
+                result['reference-info'] = '' #some id into a reference db
+                result['text'] = '' #TODO: this is how the tags get displayed
+            else:
+                print("problem in get_tag!")
+                result['type'] = ""
+                result['category'] = ""
+                result['reference-info'] = '' #some id into a reference db
+                result['text'] = '' #TODO: this is how the tags get displayed
             output.append(result)
         return output
 
@@ -338,6 +348,7 @@ class Alignment(object):
 
         provisions = {}
 
+        print("scroll through tupleized")
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             provision_mach_name = get_provision_name_from_file(_type, dashed=False)
@@ -346,7 +357,7 @@ class Alignment(object):
             if provision_group_info is not None:
                 provisions[provision_name] = {
                     'provision-readable' : provision_name,
-                    'consensus-percentage' : 0, # computed on the fly
+                    'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
                     "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
                     "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
                     "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
