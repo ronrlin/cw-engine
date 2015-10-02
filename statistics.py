@@ -68,8 +68,7 @@ class ProvisionStatistics(object):
 			provisions.append(text)
 		tfidf = vect.fit_transform(provisions)
 		matrix = (tfidf * tfidf.T).A
-		similarity_avg = sum(matrix[0]) / len(matrix[0])
-		similarity_avg = similarity_avg * 100
+		similarity_avg = 100 * (sum(matrix[0]) / len(matrix[0]))
 		return round(similarity_avg, 1)
 
 	def calculate_complexity(self, text=None):
