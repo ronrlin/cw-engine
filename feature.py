@@ -23,6 +23,7 @@ class Feature(object):
 
 	def __init__(self):
 		print("init feature loading...")
+		# TODO: make this dynamic
 		feature_files = {
 			"definitions" : "features/feature_definitions", 
 			"signature_line" : "features/feature_signature_line", 

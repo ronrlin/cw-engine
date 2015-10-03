@@ -75,10 +75,16 @@ def contract():
 		if not request.data:
 			f = request.files['data']
 			contract_data = f.stream.getvalue()
+			try:
+				#print(contract_data)
+				contract_data = contract_data.decode('utf-8')
+			except UnicodeDecodeError:
+				raise InvalidUsage("Did not provide a valid file format.", status_code=400)
 
 		else:
 			d = json.loads(request.data)
 			contract_data = d.get('text', None)
+
 			if not contract_data:
 				app.logger.error('Could not find field named text in request.data')
 				raise InvalidUsage("Did not provide a parameter named 'text'", status_code=400)
@@ -89,7 +95,6 @@ def contract():
 		print("The uploaded agreement was classified as a %s agreement." % agreement_type)
 		# Add contract_data to the datastore
 		contract_id = datastore.save_contract(contract_data, agreement_type)
-		# Return a contract_id 
 		return str(contract_id)
 
 @app.route('/contract/<contract_id>', methods=['GET', 'DELETE'])
@@ -100,27 +105,14 @@ def handle_contract(contract_id=None):
 		contract = datastore.get_contract(contract_id)
 		if (contract is None):
 			raise InvalidUsage("Contract id %s was not found" % contract_id, status_code=404)
-
-		print(contract)
-		# Check the agreement_type
-		print("accessing the contract dict...")
-		if (contract['agreement_type'] != 'nondisclosure'):
-			print("Update the db for now")
-			datastore.update_contract(contract_id, 'nondisclosure')
-			contract['agreement_type'] = 'nondisclosure'
-
-		agreement_type = contract['agreement_type']
-		agreement_text = contract['text']
-		print("loading the agreement schema for %s..." % agreement_type)
+		app.logger.error("Loaded contract: " % json.dumps(contract))
 		schema = AgreementSchema()
-		schema.load_schema(agreement_type)
-
+		schema.load_schema(contract['agreement_type'])
 		# Start alignment
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
-		paras = aligner.tokenize(agreement_text)
+		paras = aligner.tokenize(contract['text'])
 		paras = aligner.simplify(paras)
 		aligned_provisions = aligner.align(paras, version=1)
-
 		if sane_mode:
 			print("sane mode is ON.")
 			print("These document features were identified: ")
@@ -129,9 +121,7 @@ def handle_contract(contract_id=None):
 			print(aligned_provisions)
 		else:
 			print("sane mode is OFF.")
-
 		detail = aligner.get_detail(aligned_provisions)
-
 		# Create the JSON response to the browser
 		return json.dumps(detail)
 
