@@ -161,7 +161,7 @@ class Alignment(object):
         """ The smartest part.
         :param content: a list of strings 
         """
-        print("using version %s" % str(version))
+        print("using version %s (2 = Blankline tokenizer)" % str(version))
         tupleized = self.aligncore(content=content, version=version)
 
         feature = Feature()
@@ -279,9 +279,7 @@ class Alignment(object):
             for val in tag_values:
                 val = val.strip(" ")
                 #fileids = self.datastore.fetch_by_classified_tag(tag_name, val)
-                print("search terms %s : %s" % (tag_name, val))
                 fileids = self.datastore.fetch_by_tag({tag_name : val})
-                print("returns: %s" % fileids)
                 thistuple = (zip(fileids, [val] * len(fileids)))
                 #need to append elements of thistuple to tupled
                 for t in thistuple:
@@ -373,7 +371,7 @@ class Alignment(object):
         document['concepts'] = self.get_concept_detail()
         return document
 
-def testing():
+def testing(filename="nda-0000-0014.txt"):
     """ test that the class is working """
     schema = AgreementSchema()
     print("loading the nondisclosure schema...")
@@ -382,7 +380,7 @@ def testing():
     print("we're looking for...")
     print(provisions)
     a = Alignment(schema=schema)
-    filename = "nda-0000-0014.txt"
+    #filename = "nda-0000-0014.txt"
     from classifier import build_corpus
     corpus = build_corpus()
     doc = corpus.raw(filename)
@@ -397,7 +395,6 @@ def testing():
     print("returns json")
     import json
     print(json.dumps(a.get_detail(result)))
-
     print("what features we found")
     print([f[1] for f in a.provision_features])
 
