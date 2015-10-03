@@ -164,6 +164,7 @@ def build_corpus(binary=False, binary_param=None):
 
 def get_agreement_classifier_v1(train_corpus):
 	""" """
+	print("loaded CountVectorizer...")
 	count_vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
 	countClass = AgreementVectorClassifier(count_vectorizer, train_corpus)
 	countClass.fit()
@@ -171,6 +172,7 @@ def get_agreement_classifier_v1(train_corpus):
 
 def get_agreement_classifier_v2(train_corpus):
 	""" """
+	print("loaded TfidfVectorizer...")
 	tfidf_vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))	
 	tfidfClass = AgreementVectorClassifier(tfidf_vectorizer, train_corpus)
 	tfidfClass.fit()
@@ -178,6 +180,7 @@ def get_agreement_classifier_v2(train_corpus):
 
 def get_agreement_classifier_v3(train_corpus):
 	""" """
+	print("loaded NaiveBayesian, not stable.")
 	naiveClass = AgreementNaiveBayesClassifier(train_corpus)
 	naiveClass.fit()
 	return naiveClass
@@ -255,13 +258,34 @@ def testing():
 	agreement_type = classifier.classify_data([doc])
 	print("The (revolving credit) agreement is a %s agreement" % agreement_type)
 
-	doc = corpus.raw("nda-0000-0023.txt")
+	doc = corpus.raw("nnn-0000-0001.txt")
 	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement is a %s agreement" % agreement_type)
+	print("The nnn agreement is a %s agreement" % agreement_type)
 
-	doc = corpus.raw("nda-0000-0003.txt")
+	doc = corpus.raw("nnn-0000-0002.txt")
 	agreement_type = classifier.classify_data([doc])
-	print("The nda agreement is a %s agreement" % agreement_type)
+	print("The nnn agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.raw("nnn-0000-0003.txt")
+	agreement_type = classifier.classify_data([doc])
+	print("The nnn agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.raw("nnn-0000-0004.txt")
+	agreement_type = classifier.classify_data([doc])
+	print("The nnn agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.raw("nnn-0000-0005.txt")
+	agreement_type = classifier.classify_data([doc])
+	print("The nnn agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.raw("nnn-0000-0006.txt")
+	agreement_type = classifier.classify_data([doc])
+	print("The nnn agreement is a %s agreement" % agreement_type)
+
+	doc = corpus.raw("nnn-0000-0014.txt")
+	agreement_type = classifier.classify_data([doc])
+	print("The nnn agreement is a %s agreement" % agreement_type)
+
 
 def testing_nb():
 	print("Loading the datastores...")
