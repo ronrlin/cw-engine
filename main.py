@@ -31,9 +31,9 @@ app.logger.addHandler(handler)
 print("Loading the datastores...")
 datastore = WiserDatabase()
 print("Loading the agreement corpus...")
-corpus = build_corpus()
+corpus = build_corpus(binary=False)
 print("Loading the agreement classifier...")
-classifier = get_agreement_classifier_v3(corpus)
+classifier = get_agreement_classifier_v1(corpus)
 print("Application ready to load.")
 
 sane_mode = True
@@ -91,7 +91,10 @@ def contract():
 			contract_data = d['text']
 
 		# Analyze the contract
-		agreement_type = classifier.classify_data(contract_data)
+		#print("---------------")
+		#print(contract_data)
+		#print("---------------")
+		agreement_type = classifier.classify_data([contract_data])
 		print("The uploaded agreement was classified as a %s agreement." % agreement_type)
 		# Add contract_data to the datastore
 		contract_id = datastore.save_contract(contract_data, agreement_type)
@@ -101,28 +104,32 @@ def contract():
 def handle_contract(contract_id=None):
 	""" Retrieve or delete a contract. """
 	if request.method == 'GET':
+		print("retrieve a contract")
 		# Query the database on the contract_id
 		contract = datastore.get_contract(contract_id)
 		if (contract is None):
 			raise InvalidUsage("Contract id %s was not found" % contract_id, status_code=404)
-		app.logger.error("Loaded contract: " % json.dumps(contract))
+		#print(contract)
 		schema = AgreementSchema()
 		schema.load_schema(contract['agreement_type'])
 		# Start alignment
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(contract['text'])
-		paras = aligner.simplify(paras)
+		#paras = aligner.simplify(paras)
 		aligned_provisions = aligner.align(paras, version=1)
 		if sane_mode:
 			print("sane mode is ON.")
-			print("These document features were identified: ")
-			print([f[1] for f in aligner.provision_features])
+			#print("These document features were identified: ")
+			#print([f[1] for f in aligner.provision_features])
 			aligned_provisions = aligner.sanity_check(aligned_provisions)
-			print(aligned_provisions)
+			#print(aligned_provisions)
 		else:
 			print("sane mode is OFF.")
+
+		print("just the details")
 		detail = aligner.get_detail(aligned_provisions)
 		# Create the JSON response to the browser
+		print("return to sender")
 		return json.dumps(detail)
 
 	elif request.method == 'DELETE':
