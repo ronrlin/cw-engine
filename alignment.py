@@ -298,13 +298,13 @@ class Alignment(object):
                 result['category'] = classifier.classify_data(document)
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = '' #TODO: this is how the tags get displayed
-            else:
+                output.append(result)
+            else: # marked for removal
                 print("problem in get_tag!")
                 result['type'] = ""
                 result['category'] = ""
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = '' #TODO: this is how the tags get displayed
-            output.append(result)
         return output
 
     def get_concept_detail(self):
@@ -372,11 +372,11 @@ class Alignment(object):
         document['concepts'] = self.get_concept_detail()
         return document
 
-def testing(filename="nda-0000-0014.txt"):
+def testing(filename="nda-0000-0014.txt", agreement_type="nondisclosure"):
     """ test that the class is working """
     schema = AgreementSchema()
-    print("loading the nondisclosure schema...")
-    schema.load_schema("nondisclosure.ini")
+    print("loading the %s schema..." % agreement_type)
+    schema.load_schema(agreement_type)
     provisions = schema.get_provisions()
     print("we're looking for...")
     print(provisions)
