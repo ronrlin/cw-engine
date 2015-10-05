@@ -341,6 +341,7 @@ class Alignment(object):
             'doc-complexity-score' : aparams['doc_gulpease'],
             'group-similarity-score' : round(contract_group['group-similarity-score'], 1), # get this from contract_group_info
             'group-complexity-score' : round(contract_group['group-complexity-score'], 1), # get this from contract_group_info
+            'contractwiser-score' : round(100, 1),
             'tags' : self.get_tags(doc),
         }
 
