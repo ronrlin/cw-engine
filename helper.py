@@ -228,7 +228,7 @@ def load_meta_info():
 
    print("loaded the meta data about nondisclosures.")
 
-   tag_nnn = { 'lease_type' : 'nnn'}
+   tag_nnn = { 'lease_type' : 'nnn_lease'}
    info = datastore.fetch_by_filename('nnn-0000-0000.txt')
    datastore.tag_classified(str(info['_id']), tag_nnn)
    info = datastore.fetch_by_filename('nnn-0000-0001.txt')
