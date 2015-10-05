@@ -67,7 +67,7 @@ def create_universe():
    load_meta_info()
    # next step... load computed information.
    import statistics as s
-   s.compute_classified_stats()
+   s.compute_classified_stats() #does this override load_meta_info()
    s.compute_contract_group_info()
    s.compute_provision_group_info()
 
@@ -102,7 +102,7 @@ def create_contract_group_db():
    db = client['wiser_db']
    collection = db['contract_group']
    # create a document for each agreement_type
-   agreement_types = ['nondisclosure','convertible','indenture','revolving_credit', 'business_loan','bridge_loan']
+   agreement_types = ['commercial_lease', 'nondisclosure','convertible','indenture','revolving_credit', 'business_loan','bridge_loan']
    for thistype in agreement_types:
       collection.insert_one({ 'agreement_type' : thistype, 'group-complexity-score' : 0, 'group-similarity-score' : 0 })
    print("created 'contract_group' collection...")
