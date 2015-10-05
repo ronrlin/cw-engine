@@ -188,15 +188,17 @@ class Alignment(object):
                         _class = _class.replace("concept/train_", "")
                         dict_val = { 'class' : _class.replace("_", "-"), 'index' : index, 'start' : 0, 'ctr' : ctr, 'len' : _text.find(".") - 1 }
                         provkey = _type.replace("train/train_", "")
-                        self.concept_dict[provkey].append(dict_val)
-                        ctr = ctr + 1 # this tells you how many times you've found this type of provision
+                        if (dict_val['start'] > 0 and dict_val['len'] > 0):
+                            self.concept_dict[provkey].append(dict_val)
+                            ctr = ctr + 1 # this tells you how many times you've found this type of provision
                     else: 
                         # Some concepts can be obtained otherwise
                         for con in c[1:]:
                             dict_val = self._markup_concepts(concept_name=con, text=_text, index=index, counter=ctr)
-                            provkey = _type.replace("train/train_", "")
-                            self.concept_dict[provkey].append(dict_val)
-                            ctr = ctr + 1 # this tells you how many times you've found this type of provision
+                            if (dict_val['start'] > 0 and dict_val['len'] > 0):
+                                provkey = _type.replace("train/train_", "")
+                                self.concept_dict[provkey].append(dict_val)
+                                ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
         return tupleized
 
@@ -320,6 +322,10 @@ class Alignment(object):
                 concept_detail[concept_class] = { "description" : "this will say something about %s" % concept_class, "title" : concept_class}
         return concept_detail
 
+    def compute_score(self, doc_similarity, group_similarity, doc_complexity, group_complexity):
+        score = 100 * ((doc_similarity / group_similarity) + (doc_complexity / group_complexity))
+        return round(score, 1)
+
     def get_detail(self, tupleized):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
@@ -331,17 +337,22 @@ class Alignment(object):
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
         
+        doc_similarity_score = astats.calculate_similarity(doc, self.agreement_corpus)
+        doc_complexity_score = aparams['doc_gulpease']
+        group_similarity_score = round(contract_group['group-similarity-score'], 1)
+        group_complexity_score = round(contract_group['group-complexity-score'], 1)
+
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
             'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
             # doc-similarity is this doc compared to the group
-            'doc-similarity-score' : astats.calculate_similarity(doc, self.agreement_corpus), # contract_group['doc-similarity-score'] get this from contract_group_info 
-            'doc-complexity-score' : aparams['doc_gulpease'],
-            'group-similarity-score' : round(contract_group['group-similarity-score'], 1), # get this from contract_group_info
-            'group-complexity-score' : round(contract_group['group-complexity-score'], 1), # get this from contract_group_info
-            'contractwiser-score' : round(100, 1),
+            'doc-similarity-score' : doc_similarity_score, # contract_group['doc-similarity-score'] get this from contract_group_info 
+            'doc-complexity-score' : doc_complexity_score,
+            'group-similarity-score' : group_similarity_score, # get this from contract_group_info
+            'group-complexity-score' : group_complexity_score, # get this from contract_group_info
+            'contractwiser-score' : self.compute_score(doc_similarity_score, group_similarity_score, doc_complexity_score, group_complexity_score),#round(100, 1),
             'tags' : self.get_tags(doc),
         }
 
