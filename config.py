@@ -7,7 +7,12 @@ Instructions on creating the zip file stored on S3
 %> tar -czvf data.tar.gz -C data/ .
 """
 datasource_url = "https://s3-us-west-2.amazonaws.com/contractwiser-datasource/data.tar.gz"
+
+######################################################
+# This should be set to ./data.  
+# It should be something else only for testing.
 destination_directory = "./data"
+######################################################
 
 # --DATABASE SETTINGS
 # specify the database name
