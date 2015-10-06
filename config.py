@@ -4,9 +4,10 @@ from helper import WiserDatabase
 """
 Instructions on creating the zip file stored on S3
 %> cd <app root>
-%> tar -czvf data2.tar.gz -C data/ .
+%> tar -czvf data.tar.gz -C data/ .
 """
-datasource_url = "https://s3-us-west-2.amazonaws.com/contractwiser-datasource/sample.txt"
+datasource_url = "https://s3-us-west-2.amazonaws.com/contractwiser-datasource/data.tar.gz"
+destination_directory = "./data"
 
 # --DATABASE SETTINGS
 # specify the database name
@@ -37,7 +38,7 @@ def init():
 	import tarfile
 	try:
 		#change this to be dest_filename
-		if tarfile.is_tarfile("./data.tar.gz"):
+		if tarfile.is_tarfile("./datasource.tar.gz"):
 			print("Source file is a tarfile.")
 		else:
 			print("Source file is not a tarfile.")
@@ -45,8 +46,8 @@ def init():
 			return
 
 		t = tarfile.open("./data.tar.gz")
-		print("Extracting files to ./data ...")
-		t.extractall("./test-data/")
+		print("Extracting files to %s ..." % destination_directory)
+		t.extractall(destination_directory)
 	except tarfile.TarError, e:
 		print("there was a tarfile problem")
 		return
