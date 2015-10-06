@@ -34,6 +34,8 @@ class AgreementSchema(object):
 		if (".ini" not in schema_type):
 			schema_type = schema_type + ".ini"
 
+		print("A %s agreement is being loaded" % schema_type)
+
 		config.read(SCHEMA_PATH + schema_type)
 		sections = config.sections()
 		self.version = config['general']['version']
