@@ -64,4 +64,4 @@ def init():
 	datastore.create_universe()
 
 if __name__ == "__main__":
-    pass
+    init()
