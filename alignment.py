@@ -323,7 +323,7 @@ class Alignment(object):
         return concept_detail
 
     def compute_score(self, doc_similarity, group_similarity, doc_complexity, group_complexity):
-        score = 100 * ((doc_similarity / group_similarity) + (doc_complexity / group_complexity))
+        score = ((1 - doc_complexity/group_complexity) + (doc_similarity/group_similarity))/2 * 100
         return round(score, 1)
 
     def get_detail(self, tupleized):
