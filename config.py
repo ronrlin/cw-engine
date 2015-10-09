@@ -1,6 +1,14 @@
 #!/usr/bin/python
 from helper import WiserDatabase
 
+#from pdfminer.pdfparser import PDFParser
+#from pdfminer.pdfdocument import PDFDocument
+#from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfpage import PDFTextExtractionNotAllowed
+#from pdfminer.pdfinterp import PDFResourceManager
+#from pdfminer.pdfinterp import PDFPageInterpreter
+#from pdfminer.pdfdevice import PDFDevice
+
 """
 Instructions on creating the zip file stored on S3
 %> cd <app root>
@@ -62,6 +70,80 @@ def init():
 	print("Database will be called %s." % db_name)
 	datastore = WiserDatabase()
 	datastore.create_universe()
+
+def ingest(src_dir="/home/obironkenobi/Projects/sample-dir", src="sample.csv", move_to_data=False, archive=False):
+	# input should be a csv like the master-classifier (filename, type)
+	print("change the working directory to %s" % src_dir)
+	import os
+	import zipfile
+	import shutil
+	import csv
+
+	os.chdir(src_dir)
+	agreements = []
+	classifier_source = src
+	with open(classifier_source, 'r') as csvfile:
+		spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+		for row in spamreader:
+			agree = {}
+			agree['filename'] = row[0].replace(" ", "")
+			agree['category'] = row[1].replace(" ", "")
+			# row[2] is a key=value pair. 
+			agreements.append(agree)
+
+	if archive:
+		zipf = zipfile.ZipFile('datasource.zip', 'w')
+
+	for doc in agreements:
+		# extract text from pdf
+		docname = doc['filename']
+		newname = ""
+		if (".pdf" in docname):
+			newname = doc['category'] + "-" + docname.replace(".pdf", ".txt") 
+			newname = newname.replace(" ", "")
+			print("handling a pdf... %s will be created." % newname)
+			pdf2txt(docname, newname)
+
+		elif (".txt" in docname):
+			pass
+		elif (".doc" in docname or ".docx" in docname):
+			newname = doc['category'] + "-" + docname.replace(".docx", ".txt") 
+			newname = newname.replace(" ", "")
+			print("handling a docx... %s will be created." % newname)
+			doc2txt(docname, newname)
+		else: 
+			raise PDFTextExtractionNotAllowed		
+
+		if move_to_data:
+			print("moving the resulting file to data folder.")
+			shutil.move(newname, "/home/obironkenobi/Projects/cw-engine/data/")
+		if archive: 
+			zipf.write(newname)
+
+	if archive: 
+		zipf.close()
+
+	print("it would be nice to upload this to S3...")
+	# upload the tar to S3
+
+# pip install python-docx
+def doc2txt(filename, txtfile):
+	from docx import Document
+	document = Document(filename)
+	paras = [para.text.encode("utf-8") for para in document.paragraphs]
+	text = "\n".join(paras)
+	text_file = open(txtfile, "w")
+	text_file.write(text)
+	text_file.close()
+	return 
+
+# Consider custom routine as well, which can be found in the pdfminer
+# package in programming.html
+def pdf2txt(filename, txtfile):
+	import subprocess
+	outfile = "-o" + txtfile
+	subprocess.call(["pdf2txt.py", outfile, "-c utf-8", filename])
+	return
 
 if __name__ == "__main__":
     init()
