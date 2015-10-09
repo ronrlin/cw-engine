@@ -71,6 +71,9 @@ def init():
 	datastore = WiserDatabase()
 	datastore.create_universe()
 
+
+# Instructions:
+# ingest("dir/to/pdf/and/doc/files", "sample.csv", True, True)
 def ingest(src_dir="/home/obironkenobi/Projects/sample-dir", src="sample.csv", move_to_data=False, archive=False):
 	# input should be a csv like the master-classifier (filename, type)
 	print("change the working directory to %s" % src_dir)
