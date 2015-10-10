@@ -13,6 +13,8 @@ python config.py
 
 pip install -r requirements.txt -t lib
 
+sudo pip install pdfminer
+
 ### Feedback
 Star this repo if you found it useful. Use the github issue tracker to give
 feedback on this repo.
