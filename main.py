@@ -100,7 +100,10 @@ def contract():
 					interpreter.process_page(page)
 
 				contract_data = retstr.getvalue()
-
+				try:
+					contract_data = contract_data.decode('utf-8')
+				except UnicodeDecodeError:
+					raise InvalidUsage("Did not provide a valid file format.", status_code=400)
 				f.close()
 				device.close()
 				retstr.close()
