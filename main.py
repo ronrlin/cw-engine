@@ -99,19 +99,19 @@ def contract():
 				for page in PDFPage.get_pages(f, pagenos, maxpages=maxpages, password=password,caching=caching, check_extractable=True):
 					interpreter.process_page(page)
 
-				contract_data = retstr.getvalue()
 				try:
+					contract_data = unicode(retstr.getvalue(), errors="ignore")
 					contract_data = contract_data.decode('utf-8')
 				except UnicodeDecodeError:
 					raise InvalidUsage("Did not provide a valid file format.", status_code=400)
 				f.close()
 				device.close()
 				retstr.close()
-
+			if (".docx" in f.filename.lower()):
+				raise InvalidUsage(".File format 'docx' is not supported at this time.", status_code=400)				
 			else: 
-				contract_data = f.stream.getvalue()	
 				try:
-					#print(contract_data)
+					contract_data = unicode(f.stream.getvalue(), errors="ignore")
 					contract_data = contract_data.decode('utf-8')
 				except UnicodeDecodeError:
 					raise InvalidUsage("Did not provide a valid file format.", status_code=400)
