@@ -107,7 +107,8 @@ def contract():
 				f.close()
 				device.close()
 				retstr.close()
-			if (".docx" in f.filename.lower()):
+
+			elif (".docx" in f.filename.lower()):
 				raise InvalidUsage(".File format 'docx' is not supported at this time.", status_code=400)				
 			else: 
 				try:
