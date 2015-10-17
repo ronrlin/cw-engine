@@ -291,8 +291,12 @@ class Alignment(object):
             result = {}
             if (len(tupled) > 1):
                 mapped = dict(tupled)
-                tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, fileids=mapped.keys(), cat_map=mapped)
-                vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                nltk_is_stupid = [ [key] for key in mapped.keys()]
+                #print(nltk_is_stupid)
+                #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
+                tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
+                #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                vectorizer = CountVectorizer(input='content', stop_words="english", ngram_range=(1,2))
                 from classifier import AgreementVectorClassifier 
                 classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
                 classifier.fit()
