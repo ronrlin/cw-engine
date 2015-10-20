@@ -12,17 +12,16 @@ from logging.handlers import RotatingFileHandler
 import json
 from bson.json_util import dumps
 
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.converter import TextConverter
-from pdfminer.layout import LAParams
-from pdfminer.pdfpage import PDFPage
-from cStringIO import StringIO
-
 # Load ContractWiser modules
 from classifier import *
 from structure import AgreementSchema
 from alignment import Alignment
 from helper import WiserDatabase
+
+from werkzeug import secure_filename
+
+UPLOAD_FOLDER = '/home/obironkenobi/Projects/cw-engine/dump/'
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'doc', 'docx', 'rtf'])
 
 # Basics
 app = Flask(__name__)
@@ -65,9 +64,14 @@ def hello():
     """ Return a friendly HTTP greeting. """
     return 'Hello World!'
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
 @app.route('/contract', methods=['GET', 'POST'])
 def contract():
 	""" Retrieve all contracts for a user. """
+	import requests
 	if request.method == 'GET':
 		json_response = {}
 		user_record = { 'user' : { 'user_id' : 1 }, 'contracts' : [1, 2, 3, 4] }
@@ -82,40 +86,40 @@ def contract():
 			f = request.files['data']
 			print(f.filename)
 
-			if (".pdf" in f.filename.lower()):
-				print("pdf detected")
-				rsrcmgr = PDFResourceManager()
-				retstr = StringIO()
-				codec = 'utf-8'
-				laparams = LAParams()
-				device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
-				
-				interpreter = PDFPageInterpreter(rsrcmgr, device)
-				password = ""
-				maxpages = 0
-				caching = True
-				pagenos=set()
+			if f and allowed_file(f.filename):
+				import requests
+				print("file allowed")
+				filename = secure_filename(f.filename)
+				print("secure filename is needed: %s" % filename)
+				f.save(os.path.join(UPLOAD_FOLDER, filename))
+				print("save to filesystem... sucks!")
+				with open(os.path.join(UPLOAD_FOLDER, filename),'rb') as file_upload:
+					output = file_upload.read()
 
-				for page in PDFPage.get_pages(f, pagenos, maxpages=maxpages, password=password,caching=caching, check_extractable=True):
-					interpreter.process_page(page)
+				if (".pdf" in f.filename.lower()):
+					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/pdf", "Accept" : "text/plain"})
+					contract_data = r.text
 
-				try:
-					contract_data = unicode(retstr.getvalue(), errors="ignore")
-					contract_data = contract_data.decode('utf-8')
-				except UnicodeDecodeError:
-					raise InvalidUsage("Did not provide a valid file format.", status_code=400)
-				f.close()
-				device.close()
-				retstr.close()
+				elif (".docx" in f.filename.lower()):
+					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Accept" : "text/plain"})
+					contract_data = r.text
 
-			elif (".docx" in f.filename.lower()):
-				raise InvalidUsage(".File format 'docx' is not supported at this time.", status_code=400)				
-			else: 
-				try:
-					contract_data = unicode(f.stream.getvalue(), errors="ignore")
-					contract_data = contract_data.decode('utf-8')
-				except UnicodeDecodeError:
-					raise InvalidUsage("Did not provide a valid file format.", status_code=400)
+				elif (".doc" in f.filename.lower()):
+					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/msword", "Accept" : "text/plain"})
+					contract_data = r.text
+
+				elif (".rtf" in f.filename.lower()):
+					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/rtf", "Accept" : "text/plain"})
+					contract_data = r.text
+
+				elif (".txt" in f.filename.lower()): 
+					try:
+						contract_data = unicode(f.stream.getvalue(), errors="ignore")
+						contract_data = contract_data.decode('utf-8')
+					except UnicodeDecodeError:
+						raise InvalidUsage("Did not provide a valid file format.", status_code=400)
+			else:
+				raise InvalidUsage("Did not provide an allowed file format.", status_code=400)
 
 		else:
 			d = json.loads(request.data)
