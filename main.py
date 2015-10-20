@@ -138,9 +138,9 @@ def contract():
 		print("The uploaded agreement was classified as a %s agreement." % agreement_type)
 		# Add contract_data to the datastore
 		contract_id = datastore.save_contract(contract_data, agreement_type)
-        document = dict()
+		document = dict()
 		document['mainDoc'] = {
-			'contract_id' : contract_id,
+			'contract_id' : str(contract_id),
 			'agreement_type' : agreement_type,
 		}
 		return json.dumps(document)
