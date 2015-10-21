@@ -20,7 +20,7 @@ from helper import WiserDatabase
 
 from werkzeug import secure_filename
 
-UPLOAD_FOLDER = '/home/obironkenobi/Projects/cw-engine/dump/'
+UPLOAD_FOLDER = './dump/'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'doc', 'docx', 'rtf'])
 
 # Basics
