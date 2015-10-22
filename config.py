@@ -23,6 +23,9 @@ db_hostname = 'localhost'
 db_port = 27017
 # This file specifies the types of contracts
 classifier_source = "./train/master-classifier.csv"
+# Tika configuration
+tika_hostname = "localhost"
+tika_port = 8984
 
 def init():
 	""" Run init to set things up. """
@@ -32,7 +35,7 @@ def init():
 	dest_filename = "./datasource.tar.gz"
 	try:
 		name, hdrs = urllib.urlretrieve(datasource_url, dest_filename)
-		print("Archive is saved localled as %s" % name)
+		print("Archive is saved locally as %s" % name)
 		print(hdrs)
 	except IOError, e:
 		print(e)
@@ -50,7 +53,7 @@ def init():
 			print("exiting with an error")
 			return
 
-		t = tarfile.open("./data.tar.gz")
+		t = tarfile.open("./datasource.tar.gz")
 		print("Extracting files to %s ..." % destination_directory)
 		t.extractall(destination_directory)
 	except tarfile.TarError, e:
