@@ -70,6 +70,8 @@ def create_universe():
    s.compute_classified_stats() #does this override load_meta_info()
    s.compute_contract_group_info()
    s.compute_provision_group_info()
+   load_meta_info() #I'm not sure why this is necessary, but it is... NEED TO DEBUG why this is overwritten
+ 
 
 def clear_db():
    """ Empty the database """
@@ -282,6 +284,16 @@ def load_meta_info():
    info = datastore.fetch_by_filename('nnn-0000-0021.txt')
    datastore.tag_classified(str(info['_id']), tag_nnn)
    datastore.tag_classified(str(info['_id']), { 'company' : 'lowes' })
+
+   tag_gross = { 'lease_type' : 'gross_lease'}
+   info = datastore.fetch_by_filename('nnn-0000-0023.txt')
+   datastore.tag_classified(str(info['_id']), tag_gross)
+
+   tag_sublease = { 'lease_type' : 'sublease'}
+   info = datastore.fetch_by_filename('nnn-0000-0032.txt')
+   datastore.tag_classified(str(info['_id']), tag_sublease)
+   info = datastore.fetch_by_filename('nnn-0000-0028.txt')
+   datastore.tag_classified(str(info['_id']), tag_sublease)
 
    print("loaded the meta data about commercial leases.")
 

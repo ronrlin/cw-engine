@@ -174,7 +174,6 @@ def handle_contract(contract_id=None):
 		print("just the details")
 		detail = aligner.get_detail(aligned_provisions)
 		# Create the JSON response to the browser
-		print("return to sender")
 		return json.dumps(detail)
 
 	elif request.method == 'DELETE':
