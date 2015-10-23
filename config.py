@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from helper import WiserDatabase
+from helper
 
 """
 Instructions on creating the zip file stored on S3
@@ -63,8 +63,7 @@ def init():
 	# TODO: Should we cp the master-classifier.csv somewhere?
 	print("Create the universe.")
 	print("Database will be called %s." % db_name)
-	datastore = WiserDatabase()
-	datastore.create_universe()
+	helper.create_universe()
 
 if __name__ == "__main__":
     init()
