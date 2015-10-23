@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from helper
+import helper
 
 """
 Instructions on creating the zip file stored on S3
