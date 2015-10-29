@@ -354,8 +354,10 @@ class Alignment(object):
             # doc-similarity is this doc compared to the group
             'doc-similarity-score' : doc_similarity_score, # contract_group['doc-similarity-score'] get this from contract_group_info 
             'doc-complexity-score' : doc_complexity_score,
+            'doc-simplicity-score' : 100 - doc_complexity_score,
             'group-similarity-score' : group_similarity_score, # get this from contract_group_info
             'group-complexity-score' : group_complexity_score, # get this from contract_group_info
+            'group-simplicity-score' : 100 - group_complexity_score, # get this from contract_group_info
             'contractwiser-score' : self.compute_score(doc_similarity_score, group_similarity_score, doc_complexity_score, group_complexity_score),#round(100, 1),
             'tags' : self.get_tags(doc),
         }
@@ -369,6 +371,10 @@ class Alignment(object):
             provision_name = get_provision_name_from_file(_type, dashed=True)
             provision_group_info = self.datastore.get_provision_group(provision_mach_name)
             if provision_group_info is not None:
+                prov_complexity_score = astats.calculate_complexity(_block)
+                prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
+                prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
+                prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
                 provisions[provision_name] = {
                     'provision-readable' : provision_name,
                     'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
@@ -376,6 +382,7 @@ class Alignment(object):
                     "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
                     "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
                     "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
+                    "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
                     #"provision-tag" : "some-label", # computed on the fly
                 }
             else: 
