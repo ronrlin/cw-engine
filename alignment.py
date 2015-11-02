@@ -245,7 +245,16 @@ class Alignment(object):
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         return tokenizer.tokenize(content)
 
-    def get_markup(self, tupleized):
+    def get_alt_text(self, _type, text):
+        """ Get the alternate and redlined text. """
+        new_text = "There will be new text here."
+        # TODO: check the inc on the next line.... needs to be a real number.
+        new_text_block = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + new_text + "</div>"
+        alt_text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision strikethrough " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>" + new_text_block
+        return alt_text
+
+    def get_markup(self, tupleized, redline=False):
+        # make it possible to "redline" markup with parameter redline=False
         """ returns content with markup to identify provisions within agreement """
         _markup_list = []
         concept_provs = self.concept_dict.keys()
@@ -263,8 +272,12 @@ class Alignment(object):
                         text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
 
                 # then wrap in provision markup
-                text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-                text = "<p>" + text + "</p>"
+                if redline:
+                    print("get_markup: redline is true")
+                    text = self.get_alt_text(_type, text)
+                else:
+                    text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
+                    text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
@@ -330,7 +343,7 @@ class Alignment(object):
         score = ((1 - doc_complexity/group_complexity) + (doc_similarity/group_similarity))/2 * 100
         return round(score, 1)
 
-    def get_detail(self, tupleized):
+    def get_detail(self, tupleized, redline=False):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
@@ -348,7 +361,7 @@ class Alignment(object):
 
         document = dict()
         document['mainDoc'] = {
-            '_body' : self.get_markup(tupleized),
+            '_body' : self.get_markup(tupleized, redline),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
             'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
             # doc-similarity is this doc compared to the group

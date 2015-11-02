@@ -175,7 +175,9 @@ def handle_contract(contract_id=None):
 			print("sane mode is OFF.")
 
 		print("just the details")
-		detail = aligner.get_detail(aligned_provisions)
+		print("redline is TRUE")
+		redline = True
+		detail = aligner.get_detail(aligned_provisions, redline=True)
 		# Create the JSON response to the browser
 		return json.dumps(detail)
 
