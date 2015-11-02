@@ -13,8 +13,6 @@ python config.py
 
 pip install -r requirements.txt -t lib
 
-sudo pip install pdfminer
-
 ### Running Tika
 
 java -jar /home/obironkenobi/Projects/cw-engine/tika/tika-server-1.10.jar --port=8984
