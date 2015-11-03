@@ -253,9 +253,28 @@ class Alignment(object):
         alt_text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision strikethrough " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>" + new_text_block
         return alt_text
 
-    def get_markup(self, tupleized, redline=False):
+    def get_markup(self, tupleized, provisionstats, redline=False):
+        """ returns content with markup to identify provisions within agreement 
+
+            tupleized is an array of tuples [(_type, text), (_type, text), ..]
+
+            provisionstats is a dict of key=>value pairs, s.t. 
+                provisionstats['_type'] = { key : value, .. }
+                
+                key/values stored in provisionstats:
+                    'provision-readable' : 'name of the provision',
+                    'consensus-percentage' : ''
+                    "prov-similarity-score" : ''
+                    "prov-similarity-avg" : ''
+                    "prov-complexity-score" : ''
+                    "prov-complexity-avg" : ''
+                    "contractwiser-score" : ''
+
+        """
+        # might make sense to pass a contract_id!!!
         # make it possible to "redline" markup with parameter redline=False
-        """ returns content with markup to identify provisions within agreement """
+
+
         _markup_list = []
         concept_provs = self.concept_dict.keys()
         inc = dict((y,0) for (x, y) in tupleized)
@@ -272,8 +291,17 @@ class Alignment(object):
                         text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
 
                 # then wrap in provision markup
-                if redline:
-                    print("get_markup: redline is true")
+                # I could calculate stats here.
+                # TODO: need to build a condition to decide whether to redline a paragraph
+                provision_name = get_provision_name_from_file(_type, dashed=True)
+                sim_score = provisionstats[provision_name]["prov-similarity-score"]
+                sim_avg = provisionstats[provision_name]["prov-similarity-avg"]
+                comp_score = provisionstats[provision_name]["prov-complexity-score"]
+                comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
+                cw_score = provisionstats[provision_name]["contractwiser-score"]
+
+                if redline and sim_score < 75:
+                    print("do a redline for %s provision" % _type)
                     text = self.get_alt_text(_type, text)
                 else:
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
@@ -359,9 +387,36 @@ class Alignment(object):
         group_similarity_score = round(contract_group['group-similarity-score'], 1)
         group_complexity_score = round(contract_group['group-complexity-score'], 1)
 
+        print("scroll through tupleized to generate provisionstats")
+        provisionstats = {}
+        for (_block, _type) in tupleized:
+            # Collect provision_group statistics from datastore
+            provision_mach_name = get_provision_name_from_file(_type, dashed=False)
+            provision_name = get_provision_name_from_file(_type, dashed=True)
+            provision_group_info = self.datastore.get_provision_group(provision_mach_name)
+            if provision_group_info is not None:
+                # TODO: need to put the values below into the dict
+                prov_complexity_score = astats.calculate_complexity(_block)
+                prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
+                prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
+                prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
+                provisionstats[provision_name] = {
+                    'provision-readable' : provision_name,
+                    'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
+                    "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
+                    "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
+                    "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
+                    "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
+                    "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
+                    #"provision-tag" : "some-label", # computed on the fly
+                }
+            else: 
+                # TODO: log an error here and, raise an error about not having data for this
+                provisionstats[provision_name] = {}
+
         document = dict()
         document['mainDoc'] = {
-            '_body' : self.get_markup(tupleized, redline),
+            '_body' : self.get_markup(tupleized, provision_stats, redline),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
             'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
             # doc-similarity is this doc compared to the group
@@ -375,35 +430,7 @@ class Alignment(object):
             'tags' : self.get_tags(doc),
         }
 
-        provisions = {}
-
-        print("scroll through tupleized")
-        for (_block, _type) in tupleized:
-            # Collect provision_group statistics from datastore
-            provision_mach_name = get_provision_name_from_file(_type, dashed=False)
-            provision_name = get_provision_name_from_file(_type, dashed=True)
-            provision_group_info = self.datastore.get_provision_group(provision_mach_name)
-            if provision_group_info is not None:
-                prov_complexity_score = astats.calculate_complexity(_block)
-                prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
-                prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
-                prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
-                provisions[provision_name] = {
-                    'provision-readable' : provision_name,
-                    'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
-                    "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
-                    "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
-                    "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
-                    "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
-                    "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
-                    #"provision-tag" : "some-label", # computed on the fly
-                }
-            else: 
-                # TODO: log an error here and 
-                # raise an error about not having data for this
-                provisions[provision_name] = {}
-
-        document['provisions'] = provisions
+        document['provisions'] = provisionstats
         document['concepts'] = self.get_concept_detail()
         return document
 
