@@ -300,7 +300,7 @@ class Alignment(object):
                 comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
                 cw_score = provisionstats[provision_name]["contractwiser-score"]
 
-                if redline and sim_score < 75:
+                if redline and sim_score < 55:
                     print("do a redline for %s provision" % _type)
                     text = self.get_alt_text(_type, text)
                 else:
@@ -416,7 +416,7 @@ class Alignment(object):
 
         document = dict()
         document['mainDoc'] = {
-            '_body' : self.get_markup(tupleized, provision_stats, redline),
+            '_body' : self.get_markup(tupleized, provisionstats, redline),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
             'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
             # doc-similarity is this doc compared to the group
