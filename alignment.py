@@ -300,10 +300,11 @@ class Alignment(object):
                 comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
                 cw_score = provisionstats[provision_name]["contractwiser-score"]
 
-                if redline and sim_score < 55:
+                if redline and sim_score < 55 and comp_score > 50:
                     print("do a redline for %s provision" % _type)
                     text = self.get_alt_text(_type, text)
                 else:
+                    print("no need to redline %s provision" % _type)
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
                     text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
