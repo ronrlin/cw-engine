@@ -164,7 +164,7 @@ def handle_contract(contract_id=None):
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(contract['text'])
 		#paras = aligner.simplify(paras)
-		aligned_provisions = aligner.align(paras, version=1)
+		aligned_provisions = aligner.align(paras, version=2)
 		if sane_mode:
 			print("sane mode is ON.")
 			#print("These document features were identified: ")
