@@ -11,9 +11,11 @@ python config.py
 
 ### Installing Flask & Libraries
 
+sudo apt-get install python-mysqldb
+
 pip install -r requirements.txt -t lib
 
-sudo pip install pdfminer
+#sudo pip install pdfminer
 
 ### Running Tika
 
