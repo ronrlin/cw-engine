@@ -15,6 +15,8 @@ from structure import get_provision_name_from_file
 from trainer import Trainer
 from feature import Feature
 
+import numpy as np
+
 BASE_PATH = "./"
 DATA_PATH = os.path.join(BASE_PATH, "data/")
 
@@ -40,6 +42,12 @@ class Alignment(object):
         """
         self.schema = schema
         self.concept_dict = None
+        self.thresholds = {
+            "complexity" : 0,
+            "similarity" : 0,
+            "consensus" : 0,
+            "cw" : 0,
+        }
         provisions = None
 
         if (not all):
@@ -73,11 +81,11 @@ class Alignment(object):
 
         """
         if (vectorizer == COUNT_VECT): 
-            self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
-            self.vectorizer2 = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
+            self.vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,3))
+            self.vectorizer2 = CountVectorizer(input='content', stop_words=None, ngram_range=(1,3))
         elif (vectorizer == TFIDF_VECT):
-            self.vectorizer = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
-            self.vectorizer2 = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
+            self.vectorizer = TfidfVectorizer(input='content', stop_words=None, max_df=1.0, min_df=1, ngram_range=(1,3))
+            self.vectorizer2 = TfidfVectorizer(input='content', stop_words=None, max_df=1.0, min_df=1, ngram_range=(1,3))
 
         # Try using BlanklineTokenizer
         start_time = time.time()
@@ -200,6 +208,7 @@ class Alignment(object):
                                 self.concept_dict[provkey].append(dict_val)
                                 ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
+        #tupleized = sanity_check(tupleized)
         return tupleized
 
     def sanity_check(self, tupleized):
@@ -249,8 +258,8 @@ class Alignment(object):
         """ Get the alternate and redlined text. """
         new_text = "There will be new text here."
         # TODO: check the inc on the next line.... needs to be a real number.
-        new_text_block = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + new_text + "</div>"
-        alt_text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision strikethrough " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>" + new_text_block
+        new_text_block = "<span id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + new_text + "</span>"
+        alt_text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
         return alt_text
 
     def get_markup(self, tupleized, provisionstats, redline=False):
@@ -274,7 +283,7 @@ class Alignment(object):
         # might make sense to pass a contract_id!!!
         # make it possible to "redline" markup with parameter redline=False
 
-
+        thresholds = self.thresholds
         _markup_list = []
         concept_provs = self.concept_dict.keys()
         inc = dict((y,0) for (x, y) in tupleized)
@@ -299,8 +308,10 @@ class Alignment(object):
                 comp_score = provisionstats[provision_name]["prov-complexity-score"]
                 comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
                 cw_score = provisionstats[provision_name]["contractwiser-score"]
+                print("similarity: %s and complexity: %s" % (sim_score, comp_score))
+                # consider a utility function here
 
-                if redline and sim_score < 55 and comp_score > 50:
+                if redline and (comp_score > thresholds["complexity"]):
                     print("do a redline for %s provision" % _type)
                     text = self.get_alt_text(_type, text)
                 else:
@@ -311,6 +322,23 @@ class Alignment(object):
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
         return " ".join(_markup_list)
+
+    def set_thresholds(self, provisionstats):
+        """ HERE's the work """
+
+        complex_stats = np.array([stats["prov-complexity-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        similar_stats = np.array([stats["prov-similarity-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        cw_stats = np.array([stats["contractwiser-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        consensus_stats = np.array([stats["consensus-percentage"] for (prov_name, stats) in provisionstats.iteritems()])
+        #np.nanmean(complex_stats, axis=1)
+        thresholds = {
+            "complexity" : np.nanmedian(complex_stats),
+            "similarity" : np.nanmedian(similar_stats),
+            "cw" : np.nanmedian(cw_stats),
+            "consensus" : np.nanmedian(consensus_stats),
+        }
+        self.thresholds = thresholds
+        return
 
     def get_tags(self, document):
         tags = self.schema.get_tags()
@@ -338,7 +366,8 @@ class Alignment(object):
                 #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
                 tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
                 #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-                vectorizer = CountVectorizer(input='content', stop_words="english", ngram_range=(1,2))
+                vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
                 from classifier import AgreementVectorClassifier 
                 classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
                 classifier.fit()
@@ -408,13 +437,17 @@ class Alignment(object):
                     "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
                     "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
                     "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
+                    "prov-simplicity-score" : 100 - astats.calculate_complexity(_block), # computed on the fly
+                    "prov-simplicity-avg" : 100 - round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
                     "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
                     #"provision-tag" : "some-label", # computed on the fly
                 }
             else: 
                 # TODO: log an error here and, raise an error about not having data for this
-                provisionstats[provision_name] = {}
+                #provisionstats[provision_name] = {}
+                pass
 
+        self.set_thresholds(provisionstats)
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
@@ -428,6 +461,7 @@ class Alignment(object):
             'group-complexity-score' : group_complexity_score, # get this from contract_group_info
             'group-simplicity-score' : 100 - group_complexity_score, # get this from contract_group_info
             'contractwiser-score' : self.compute_score(doc_similarity_score, group_similarity_score, doc_complexity_score, group_complexity_score),#round(100, 1),
+            'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.get_tags(doc),
         }
 
@@ -435,7 +469,7 @@ class Alignment(object):
         document['concepts'] = self.get_concept_detail()
         return document
 
-def testing(filename="nda-0000-0014.txt", agreement_type="nondisclosure"):
+def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     """ test that the class is working """
     schema = AgreementSchema()
     print("loading the %s schema..." % agreement_type)
@@ -455,12 +489,13 @@ def testing(filename="nda-0000-0014.txt", agreement_type="nondisclosure"):
     print("alignment...")
     result = a.align(toks)
     print("check on the markup")
-    markup = a.get_markup(result)
-    print("returns json")
-    import json
-    print(json.dumps(a.get_detail(result)))
-    print("what features we found")
-    print([f[1] for f in a.provision_features])
+    document = a.get_detail(result, redline=True)
+    print(document['mainDoc'])
+    #print("returns json")
+    #import json
+    #print(json.dumps(a.get_detail(result)))
+    #print("what features we found")
+    #print([f[1] for f in a.provision_features])
 
     """ example of some simple chunking """ 
     #for sent in testset: 
