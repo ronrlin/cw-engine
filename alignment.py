@@ -15,6 +15,8 @@ from structure import get_provision_name_from_file
 from trainer import Trainer
 from feature import Feature
 
+import numpy as np
+
 BASE_PATH = "./"
 DATA_PATH = os.path.join(BASE_PATH, "data/")
 
@@ -40,6 +42,12 @@ class Alignment(object):
         """
         self.schema = schema
         self.concept_dict = None
+        self.thresholds = {
+            "complexity" : 0,
+            "similarity" : 0,
+            "consensus" : 0,
+            "cw" : 0,
+        }
         provisions = None
 
         if (not all):
@@ -73,11 +81,11 @@ class Alignment(object):
 
         """
         if (vectorizer == COUNT_VECT): 
-            self.vectorizer = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
-            self.vectorizer2 = CountVectorizer(input='content', stop_words='english', ngram_range=(1,3))
+            self.vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,3))
+            self.vectorizer2 = CountVectorizer(input='content', stop_words=None, ngram_range=(1,3))
         elif (vectorizer == TFIDF_VECT):
-            self.vectorizer = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
-            self.vectorizer2 = TfidfVectorizer(input='content', stop_words='english', ngram_range=(1,3))
+            self.vectorizer = TfidfVectorizer(input='content', stop_words=None, max_df=1.0, min_df=1, ngram_range=(1,3))
+            self.vectorizer2 = TfidfVectorizer(input='content', stop_words=None, max_df=1.0, min_df=1, ngram_range=(1,3))
 
         # Try using BlanklineTokenizer
         start_time = time.time()
@@ -200,6 +208,7 @@ class Alignment(object):
                                 self.concept_dict[provkey].append(dict_val)
                                 ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
+        #tupleized = sanity_check(tupleized)
         return tupleized
 
     def sanity_check(self, tupleized):
@@ -245,8 +254,40 @@ class Alignment(object):
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         return tokenizer.tokenize(content)
 
-    def get_markup(self, tupleized):
-        """ returns content with markup to identify provisions within agreement """
+    def get_alt_text(self, provision_type, text, increment=0):
+        """ Get the alternate and redlined text. """
+        new_text = "There will be new text here."
+        # Instantiate the ProvisionDB
+        from provision import ProvisionMiner
+        pm = ProvisionMiner()
+        agreement_type = self.schema.get_agreement_type()
+        alt_text = pm.find_better(provision_type, agreement_type)
+        new_text_block = "<span id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + new_text + "</span>"
+        alt_text = "<div id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
+        return alt_text
+
+    def get_markup(self, tupleized, provisionstats, redline=False):
+        """ returns content with markup to identify provisions within agreement 
+
+            tupleized is an array of tuples [(_type, text), (_type, text), ..]
+
+            provisionstats is a dict of key=>value pairs, s.t. 
+                provisionstats['_type'] = { key : value, .. }
+                
+                key/values stored in provisionstats:
+                    'provision-readable' : 'name of the provision',
+                    'consensus-percentage' : ''
+                    "prov-similarity-score" : ''
+                    "prov-similarity-avg" : ''
+                    "prov-complexity-score" : ''
+                    "prov-complexity-avg" : ''
+                    "contractwiser-score" : ''
+
+        """
+        # might make sense to pass a contract_id!!!
+        # make it possible to "redline" markup with parameter redline=False
+
+        thresholds = self.thresholds
         _markup_list = []
         concept_provs = self.concept_dict.keys()
         inc = dict((y,0) for (x, y) in tupleized)
@@ -263,12 +304,45 @@ class Alignment(object):
                         text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
 
                 # then wrap in provision markup
-                text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-                text = "<p>" + text + "</p>"
+                # I could calculate stats here.
+                # TODO: need to build a condition to decide whether to redline a paragraph
+                provision_name = get_provision_name_from_file(_type, dashed=True)
+                sim_score = provisionstats[provision_name]["prov-similarity-score"]
+                sim_avg = provisionstats[provision_name]["prov-similarity-avg"]
+                comp_score = provisionstats[provision_name]["prov-complexity-score"]
+                comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
+                cw_score = provisionstats[provision_name]["contractwiser-score"]
+                print("similarity: %s and complexity: %s" % (sim_score, comp_score))
+                # consider a utility function here
+
+                if redline and (comp_score > thresholds["complexity"]):
+                    print("do a redline for %s provision" % _type)
+                    text = self.get_alt_text(_type, text, inc[_type])
+                else:
+                    print("no need to redline %s provision" % _type)
+                    text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
+                    text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
         return " ".join(_markup_list)
+
+    def set_thresholds(self, provisionstats):
+        """ HERE's the work """
+
+        complex_stats = np.array([stats["prov-complexity-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        similar_stats = np.array([stats["prov-similarity-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        cw_stats = np.array([stats["contractwiser-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        consensus_stats = np.array([stats["consensus-percentage"] for (prov_name, stats) in provisionstats.iteritems()])
+        #np.nanmean(complex_stats, axis=1)
+        thresholds = {
+            "complexity" : np.nanmedian(complex_stats),
+            "similarity" : np.nanmedian(similar_stats),
+            "cw" : np.nanmedian(cw_stats),
+            "consensus" : np.nanmedian(consensus_stats),
+        }
+        self.thresholds = thresholds
+        return
 
     def get_tags(self, document):
         tags = self.schema.get_tags()
@@ -296,12 +370,13 @@ class Alignment(object):
                 #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
                 tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
                 #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-                vectorizer = CountVectorizer(input='content', stop_words="english", ngram_range=(1,2))
+                #vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
                 from classifier import AgreementVectorClassifier 
                 classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
                 classifier.fit()
                 result['type'] = tag_name
-                result['category'] = classifier.classify_data(document)
+                result['category'] = classifier.classify_data([document])
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = '' #TODO: this is how the tags get displayed
                 output.append(result)
@@ -330,7 +405,7 @@ class Alignment(object):
         score = ((1 - doc_complexity/group_complexity) + (doc_similarity/group_similarity))/2 * 100
         return round(score, 1)
 
-    def get_detail(self, tupleized):
+    def get_detail(self, tupleized, redline=False):
         # Collect contract_group statistics from datastore
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
@@ -346,9 +421,40 @@ class Alignment(object):
         group_similarity_score = round(contract_group['group-similarity-score'], 1)
         group_complexity_score = round(contract_group['group-complexity-score'], 1)
 
+        print("scroll through tupleized to generate provisionstats")
+        provisionstats = {}
+        for (_block, _type) in tupleized:
+            # Collect provision_group statistics from datastore
+            provision_mach_name = get_provision_name_from_file(_type, dashed=False)
+            provision_name = get_provision_name_from_file(_type, dashed=True)
+            provision_group_info = self.datastore.get_provision_group(provision_mach_name)
+            if provision_group_info is not None:
+                # TODO: need to put the values below into the dict
+                prov_complexity_score = astats.calculate_complexity(_block)
+                prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
+                prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
+                prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
+                provisionstats[provision_name] = {
+                    'provision-readable' : provision_name,
+                    'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
+                    "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
+                    "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
+                    "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
+                    "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
+                    "prov-simplicity-score" : 100 - astats.calculate_complexity(_block), # computed on the fly
+                    "prov-simplicity-avg" : 100 - round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
+                    "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
+                    #"provision-tag" : "some-label", # computed on the fly
+                }
+            else: 
+                # TODO: log an error here and, raise an error about not having data for this
+                #provisionstats[provision_name] = {}
+                pass
+
+        self.set_thresholds(provisionstats)
         document = dict()
         document['mainDoc'] = {
-            '_body' : self.get_markup(tupleized),
+            '_body' : self.get_markup(tupleized, provisionstats, redline),
             'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
             'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
             # doc-similarity is this doc compared to the group
@@ -359,42 +465,15 @@ class Alignment(object):
             'group-complexity-score' : group_complexity_score, # get this from contract_group_info
             'group-simplicity-score' : 100 - group_complexity_score, # get this from contract_group_info
             'contractwiser-score' : self.compute_score(doc_similarity_score, group_similarity_score, doc_complexity_score, group_complexity_score),#round(100, 1),
+            'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.get_tags(doc),
         }
 
-        provisions = {}
-
-        print("scroll through tupleized")
-        for (_block, _type) in tupleized:
-            # Collect provision_group statistics from datastore
-            provision_mach_name = get_provision_name_from_file(_type, dashed=False)
-            provision_name = get_provision_name_from_file(_type, dashed=True)
-            provision_group_info = self.datastore.get_provision_group(provision_mach_name)
-            if provision_group_info is not None:
-                prov_complexity_score = astats.calculate_complexity(_block)
-                prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
-                prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
-                prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
-                provisions[provision_name] = {
-                    'provision-readable' : provision_name,
-                    'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
-                    "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
-                    "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
-                    "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
-                    "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
-                    "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
-                    #"provision-tag" : "some-label", # computed on the fly
-                }
-            else: 
-                # TODO: log an error here and 
-                # raise an error about not having data for this
-                provisions[provision_name] = {}
-
-        document['provisions'] = provisions
+        document['provisions'] = provisionstats
         document['concepts'] = self.get_concept_detail()
         return document
 
-def testing(filename="nda-0000-0014.txt", agreement_type="nondisclosure"):
+def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     """ test that the class is working """
     schema = AgreementSchema()
     print("loading the %s schema..." % agreement_type)
@@ -414,12 +493,13 @@ def testing(filename="nda-0000-0014.txt", agreement_type="nondisclosure"):
     print("alignment...")
     result = a.align(toks)
     print("check on the markup")
-    markup = a.get_markup(result)
-    print("returns json")
-    import json
-    print(json.dumps(a.get_detail(result)))
-    print("what features we found")
-    print([f[1] for f in a.provision_features])
+    document = a.get_detail(result, redline=True)
+    print(document['mainDoc'])
+    #print("returns json")
+    #import json
+    #print(json.dumps(a.get_detail(result)))
+    #print("what features we found")
+    #print([f[1] for f in a.provision_features])
 
     """ example of some simple chunking """ 
     #for sent in testset: 
@@ -475,6 +555,45 @@ def comp():
     aligned_provisions2 = aligner2.align(paras) # aligned_provisions is a list of tuples
 
     return(aligner1, aligner2)
+
+def test_tag_system():
+    """  """
+    uni = {"disclosure_type" : "unilateral"}
+    mut = {"disclosure_type" : "mutual"}
+    from helper import WiserDatabase
+    datastore = WiserDatabase()
+
+    m_fileids = datastore.fetch_by_tag(mut)
+    u_fileids = datastore.fetch_by_tag(uni)
+
+    tupled = zip(m_fileids, [mut] * len(m_fileids)) + (zip(u_fileids, [uni] * len(u_fileids)))
+    print("%s files will be loaded into tag corpus." % str(len(tupled)))
+
+    mapped = dict(tupled)
+    nltk_is_stupid = [ [key] for key in mapped.keys()]
+    #print(nltk_is_stupid)
+    #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
+    tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
+    vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+    #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+    from classifier import AgreementVectorClassifier 
+    classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
+    classifier.fit()
+
+    print("obtain a corpus...")
+    from structure import AgreementSchema
+    from classifier import build_corpus
+    schema = AgreementSchema()
+    schema.load_schema('nondisclosure')
+    corpus = build_corpus()
+    document = corpus.raw("nda-0000-0052.txt")
+
+    result = {}
+    result['type'] = "disco"
+    result['category'] = classifier.classify_data([document])
+    result['reference-info'] = '' #some id into a reference db
+    result['text'] = '' #TODO: this is how the tags get displayed
+    print(result)    
 
 def build_provision_tests():
     provisions = []

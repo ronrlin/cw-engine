@@ -17,10 +17,16 @@ destination_directory = "./data"
 # --DATABASE SETTINGS
 # specify the database name
 db_name = "wiser_db"
-# specify the hostname
 db_hostname = 'localhost'
-# specify the port
 db_port = 27017
+
+# --MYSQL SETTINGS
+host = "localhost"
+user = "root"
+passwd = ""
+mysql_db = "provision_db"
+
+# --CSV OF CLASSIFIED FILES
 # This file specifies the types of contracts
 classifier_source = "./train/master-classifier.csv"
 # Tika configuration
