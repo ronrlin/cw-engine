@@ -20,9 +20,6 @@ class ProvisionMiner(object):
 		# raise on error on failure
 		self.db = self.connect()
 
-	def __del__(self):
-		self.db.close()
-
 	def connect(self, host="localhost", user="root", passwd="", db_name="provision_db"):
 		db = MySQLdb.connect(host=host, user=user, passwd=passwd, db=db_name)
 		return db
