@@ -254,12 +254,16 @@ class Alignment(object):
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         return tokenizer.tokenize(content)
 
-    def get_alt_text(self, _type, text):
+    def get_alt_text(self, provision_type, text, increment=0):
         """ Get the alternate and redlined text. """
         new_text = "There will be new text here."
-        # TODO: check the inc on the next line.... needs to be a real number.
-        new_text_block = "<span id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + new_text + "</span>"
-        alt_text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-99" + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
+        # Instantiate the ProvisionDB
+        from provision import ProvisionMiner
+        pm = ProvisionMiner()
+        agreement_type = self.schema.get_agreement_type()
+        alt_text = pm.find_better(provision_type, agreement_type)
+        new_text_block = "<span id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + new_text + "</span>"
+        alt_text = "<div id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
         return alt_text
 
     def get_markup(self, tupleized, provisionstats, redline=False):
@@ -313,7 +317,7 @@ class Alignment(object):
 
                 if redline and (comp_score > thresholds["complexity"]):
                     print("do a redline for %s provision" % _type)
-                    text = self.get_alt_text(_type, text)
+                    text = self.get_alt_text(_type, text, inc[_type])
                 else:
                     print("no need to redline %s provision" % _type)
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
@@ -366,13 +370,13 @@ class Alignment(object):
                 #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
                 tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
                 #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-                vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-                #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                #vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+                vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
                 from classifier import AgreementVectorClassifier 
                 classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
                 classifier.fit()
                 result['type'] = tag_name
-                result['category'] = classifier.classify_data(document)
+                result['category'] = classifier.classify_data([document])
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = '' #TODO: this is how the tags get displayed
                 output.append(result)
@@ -551,6 +555,45 @@ def comp():
     aligned_provisions2 = aligner2.align(paras) # aligned_provisions is a list of tuples
 
     return(aligner1, aligner2)
+
+def test_tag_system():
+    """  """
+    uni = {"disclosure_type" : "unilateral"}
+    mut = {"disclosure_type" : "mutual"}
+    from helper import WiserDatabase
+    datastore = WiserDatabase()
+
+    m_fileids = datastore.fetch_by_tag(mut)
+    u_fileids = datastore.fetch_by_tag(uni)
+
+    tupled = zip(m_fileids, [mut] * len(m_fileids)) + (zip(u_fileids, [uni] * len(u_fileids)))
+    print("%s files will be loaded into tag corpus." % str(len(tupled)))
+
+    mapped = dict(tupled)
+    nltk_is_stupid = [ [key] for key in mapped.keys()]
+    #print(nltk_is_stupid)
+    #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
+    tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
+    vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+    #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
+    from classifier import AgreementVectorClassifier 
+    classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
+    classifier.fit()
+
+    print("obtain a corpus...")
+    from structure import AgreementSchema
+    from classifier import build_corpus
+    schema = AgreementSchema()
+    schema.load_schema('nondisclosure')
+    corpus = build_corpus()
+    document = corpus.raw("nda-0000-0052.txt")
+
+    result = {}
+    result['type'] = "disco"
+    result['category'] = classifier.classify_data([document])
+    result['reference-info'] = '' #some id into a reference db
+    result['text'] = '' #TODO: this is how the tags get displayed
+    print(result)    
 
 def build_provision_tests():
     provisions = []
