@@ -9,6 +9,18 @@ Instructions on creating environment:
 
 %> mysql -uroot
 > CREATE DATABASE provision_db;
+
+> CREATE TABLE provision_lookup(id INT PRIMARY KEY AUTO_INCREMENT, type_name VARCHAR(99), agreement_type VARCHAR(99))
+
+> CREATE TABLE provision_selection(id INT PRIMARY KEY AUTO_INCREMENT, provision_text VARCHAR(99), provision_type INT, score INT)
++----------------+---------+------+-----+---------+----------------+
+| Field          | Type    | Null | Key | Default | Extra          |
++----------------+---------+------+-----+---------+----------------+
+| id             | int(11) | NO   | PRI | NULL    | auto_increment |
+| provision_text | text    | YES  |     | NULL    |                |
+| provision_type | int(11) | YES  |     | NULL    |                |
+| score          | int(11) | YES  |     | NULL    |                |
++----------------+---------+------+-----+---------+----------------+
 > exit
 %>
 
