@@ -258,10 +258,11 @@ class Alignment(object):
         """ Get the alternate and redlined text. """
         new_text = "There will be new text here."
         # Instantiate the ProvisionDB
-        from provision import ProvisionMiner
-        pm = ProvisionMiner()
+        #from provision import ProvisionMiner
+
+        #pm = ProvisionMiner()
         agreement_type = self.schema.get_agreement_type()
-        alt_text = pm.find_better(provision_type, agreement_type)
+        #alt_text = pm.find_better(provision_type, agreement_type)
         new_text_block = "<span id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + new_text + "</span>"
         alt_text = "<div id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
         return alt_text
