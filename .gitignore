@@ -4,3 +4,6 @@ lib/
 !lib/README.md
 .DS_Store
 foo.log
+settings.ini
+requirements.txt
+sample.txt

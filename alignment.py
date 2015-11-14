@@ -165,17 +165,7 @@ class Alignment(object):
             tupleized = list(zip(content, list(results)))
         return tupleized
 
-    def align(self, content, version=1):
-        """ The smartest part.
-        :param content: a list of strings 
-        """
-        print("using version %s (2 = Blankline tokenizer)" % str(version))
-        tupleized = self.aligncore(content=content, version=version)
-
-        feature = Feature()
-        self.provision_features = feature.text_identify(content)
-        #print([f[1] for f in self.provision_features])
-
+    def build_concepts(self, tupleized):
         concepts = self.schema.get_concepts()
         concept_keys = [a[0] for a in concepts]
         provisions = self.schema.get_provisions()
@@ -208,7 +198,21 @@ class Alignment(object):
                                 self.concept_dict[provkey].append(dict_val)
                                 ctr = ctr + 1 # this tells you how many times you've found this type of provision
                 index = index + 1
-        #tupleized = sanity_check(tupleized)
+
+    def align(self, content, version=1):
+        """ The smartest part.
+        :param content: a list of strings 
+        """
+        print("using version %s (2 = Blankline tokenizer)" % str(version))
+        tupleized = self.aligncore(content=content, version=version)
+        # Inspect the features of tupleized
+        feature = Feature()
+        self.provision_features = feature.text_identify(content)
+        # Build a concepts dictionary that will be used in get_markup
+        self.build_concepts(tupleized)
+        # Use features to perform a sanity check
+        # TODO: bring Feature() into sanity_check
+        tupleized = self.sanity_check(tupleized)
         return tupleized
 
     def sanity_check(self, tupleized):

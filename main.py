@@ -158,27 +158,13 @@ def handle_contract(contract_id=None):
 		contract = datastore.get_contract(contract_id)
 		if (contract is None):
 			raise InvalidUsage("Contract id %s was not found" % contract_id, status_code=404)
-		#print(contract)
 		schema = AgreementSchema()
 		schema.load_schema(contract['agreement_type'])
 		# Start alignment
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(contract['text'])
-		#paras = aligner.simplify(paras)
 		aligned_provisions = aligner.align(paras, version=2)
-		if sane_mode:
-			print("sane mode is ON.")
-			#print("These document features were identified: ")
-			#print([f[1] for f in aligner.provision_features])
-			aligned_provisions = aligner.sanity_check(aligned_provisions)
-			#print(aligned_provisions)
-		else:
-			print("sane mode is OFF.")
-
-		print("just the details")
-		print("redline is TRUE")
-		redline = True
-		detail = aligner.get_detail(aligned_provisions, redline=True)
+		detail = aligner.get_detail(aligned_provisions, redline=False)
 		# Create the JSON response to the browser
 		return json.dumps(detail)
 
@@ -187,8 +173,18 @@ def handle_contract(contract_id=None):
 
 @app.route('/contract/<contract_id>/redline', methods=['GET'])
 def handle_redline(contract_id=None):
-	print("Redlines happen.")
-	return handle_contract(contract_id)
+	contract = datastore.get_contract(contract_id)
+	if (contract is None):
+		raise InvalidUsage("Contract id %s was not found" % contract_id, status_code=404)
+	schema = AgreementSchema()
+	schema.load_schema(contract['agreement_type'])
+	# Start alignment
+	aligner = Alignment(schema=schema, vectorizer=2, all=True)
+	paras = aligner.tokenize(contract['text'])
+	aligned_provisions = aligner.align(paras, version=2)
+	detail = aligner.get_detail(aligned_provisions, redline=True)
+	# Create the JSON response to the browser
+	return json.dumps(detail)
 
 @app.route('/users')
 def users():
