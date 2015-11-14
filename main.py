@@ -184,6 +184,11 @@ def handle_contract(contract_id=None):
 	elif request.method == 'DELETE':
 		return 'Delete contract ' + contract_id
 
+@app.route('/contract/<contract_id>/redline', methods=['GET'])
+def handle_redline(contract_id=None):
+	print("Redlines happen.")
+	return handle_contract(contract_id)
+
 @app.route('/users')
 def users():
 	"""Retrieve a list of users."""
