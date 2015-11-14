@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import helper
+import configparser
 
 """
 Instructions on creating the zip file stored on S3
@@ -14,26 +15,11 @@ datasource_url = "https://s3-us-west-2.amazonaws.com/contractwiser-datasource/da
 destination_directory = "./data"
 ######################################################
 
-# --DATABASE SETTINGS
-# specify the database name
-db_name = "wiser_db"
-db_hostname = 'localhost'
-db_port = 27017
-
-# --MYSQL SETTINGS
-host = "localhost"
-user = "root"
-passwd = ""
-mysql_db = "provision_db"
-
 # --CSV OF CLASSIFIED FILES
 # This file specifies the types of contracts
 classifier_source = "./train/master-classifier.csv"
-# Tika configuration
-tika_hostname = "localhost"
-tika_port = 8984
 
-def init():
+def retrieve_and_load_data():
 	""" Run init to set things up. """
 	print("Installing ContractWiser engine...")
 	print("Fetching datasource from Amazon S3...")
@@ -71,5 +57,39 @@ def init():
 	print("Database will be called %s." % db_name)
 	helper.create_universe()
 
+	def __init__(self):
+		pass
+
+def load_settings_file():
+	config = configparser.ConfigParser()
+	config.read("./settings.ini")
+	return config
+
+def load_tika():
+	config = load_settings_file()
+	params = dict()
+	params['hostname'] = config['tika']['hostname']
+	params['port'] = config['tika']['port']
+	return params
+
+def load_mongo():
+	"""	Loads configuration settings from settings.ini """
+	config = load_settings_file()
+	mongo_params = dict()
+	mongo_params['db_name'] = config['mongo']['db_name']
+	mongo_params['hostname'] = config['mongo']['hostname']
+	mongo_params['port'] = int(config['mongo']['port'])
+	return mongo_params
+
+def load_mysql(self):
+	config = load_settings_file()
+	mysql_params = dict()
+	mysql_params['db_name'] = config['mysql']['db_name']
+	mysql_params['host'] = config['mysql']['host']
+	mysql_params['user'] = config['mysql']['user']
+	mysql_params['passwd'] = config['mysql']['passwd']
+	return mysql_params
+
+
 if __name__ == "__main__":
-    init()
+    pass

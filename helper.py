@@ -75,11 +75,12 @@ def create_universe():
 
 def clear_db():
    """ Empty the database """
-   import config as Constants
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
-   client[Constants.db_name].drop_collection('classified')
+   import config
+   mongo = config.load_mongo()
+   client = MongoClient(mongo['hostname'], mongo['port'])
+   client[mongo['db_name']].drop_collection('classified')
    print("drop 'classified' collection...")
-   client.drop_database(Constants.db_name)
+   client.drop_database(mongo['db_name'])
    print("drop wiser_db...")
    client.close()
 
@@ -90,11 +91,12 @@ def clear_meta_info():
 
 def create_contract_db():
    """ Create the 'contracts' db """
-   import config as Constants
+   import config
+   mongo = config.load_mongo()
    #client = MongoClient('localhost', 27017)
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
+   client = MongoClient(mongo['hostname'], mongo['port'])
    print(client.database_names())
-   db = client[Constants.db_name]
+   db = client[mongo['db_name']]
    collection = db['contracts']
    collection.insert_one({'text' : 'some text', 'agreement_type' : 'nondisclosure'})
    print("created 'contracts' collection...")
@@ -102,10 +104,10 @@ def create_contract_db():
 
 def create_contract_group_db():
    """ Create the 'contract_group' db """
-   import config as Constants
-   #client = MongoClient('localhost', 27017)
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
-   db = client[Constants.db_name]
+   import config
+   mongo = config.load_mongo()
+   client = MongoClient(mongo['hostname'], mongo['port'])
+   db = client[mongo['db_name']]
    collection = db['contract_group']
 
    # create a document for each agreement_type   
@@ -119,19 +121,20 @@ def create_contract_group_db():
 
 def clear_contract_group_db():
    """ Empty the contract_group_info collection """
-   import config as Constants
-   #client = MongoClient('localhost', 27017)
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
-   client[Constants.db_name].drop_collection('contract_group')
+   import config
+   mongo = config.load_mongo()
+   client = MongoClient(mongo['hostname'], mongo['port'])
+   client[mongo['db_name']].drop_collection('contract_group')
    print("drop 'contract_group' collection...")
    client.close()
 
 def create_provision_group_db():
    """ Create the 'provision_group' db """
-   import config as Constants
+   import config
+   mongo = config.load_mongo()
    #client = MongoClient('localhost', 27017)
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
-   db = client[Constants.db_name]
+   client = MongoClient(mongo['hostname'], mongo['port'])
+   db = client[mongo['db_name']]
    collection = db['provision_group']
    #collection.insert_one({ 'provision_name' : 'confidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
    #collection.insert_one({ 'provision_name' : 'nonconfidential_information', 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 })
@@ -153,29 +156,31 @@ def create_provision_group_db():
 
 def clear_provision_group_db():
    """ Empty the provision_group_info collection """
-   import config as Constants
+   import config
+   mongo = config.load_mongo()
    #client = MongoClient('localhost', 27017)
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
-   client[Constants.db_name].drop_collection('provision_group')
+   client = MongoClient(mongo['hostname'], mongo['port'])
+   client[mongo['db_name']].drop_collection('provision_group')
    print("drop 'provision_group' collection...")
    client.close()
 
 def create_db():
    """ Create the 'classified' db, which stores metainformation about analyzed agreements """
-   import config as Constants
+   import config
+   mongo = config.load_mongo()
    #client = MongoClient('localhost', 27017)
-   client = MongoClient(Constants.db_hostname, Constants.db_port)
+   client = MongoClient(mongo['hostname'], mongo['port'])
    print(client.database_names())
-   db = client[Constants.db_name]
-   print("created db named %s..." % Constants.db_name)
+   db = client[mongo['db_name']]
+   print("created db named %s..." % mongo['db_name'])
    collection = db['classified']
    print("created 'classified' collection...")
    collection.create_index([('filename', 1)], unique=True)
    import csv
    agreements = list()
 
-   import config as Constants
-   classifier_source = Constants.classifier_source
+   import config
+   classifier_source = config.classifier_source
    with open(classifier_source, 'r') as csvfile:
       spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
       for row in spamreader:
@@ -314,10 +319,10 @@ def load_meta_info():
 class WiserDatabase(object):
    """ """
    def __init__(self):
-      import config as Constants
-      #self.client = MongoClient(default_hostname, default_port)
-      self.client = MongoClient(Constants.db_hostname, Constants.db_port)      
-      self.db = self.client[Constants.db_name]
+      import config
+      mongo = config.load_mongo()
+      self.client = MongoClient(mongo['hostname'], mongo['port'])      
+      self.db = self.client[mongo['db_name']]
       # collection refers to the repository of classified agreements
       self.collection = self.db['classified']
       # contracts is the repository that stores uploaded agreements

@@ -72,7 +72,7 @@ def allowed_file(filename):
 def contract():
 	""" Retrieve all contracts for a user. """
 	import requests
-	import config as Constants
+	import config
 	if request.method == 'GET':
 		json_response = {}
 		user_record = { 'user' : { 'user_id' : 1 }, 'contracts' : [1, 2, 3, 4] }
@@ -97,22 +97,23 @@ def contract():
 				with open(os.path.join(UPLOAD_FOLDER, filename),'rb') as file_upload:
 					output = file_upload.read()
 
-				if (".pdf" in f.filename.lower()):
-					Constants.tika_hostname
-					Constants.tika_port
-					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/pdf", "Accept" : "text/plain"})
+				tika = config.load_tika()
+				tika_url = "http://" + tika['hostname'] + ":" + tika['port'] + "/tika"
+				print("Tika is being accessed at %s" % tika_url)
+				if (".pdf" in f.filename.lower()):					
+					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/pdf", "Accept" : "text/plain"})
 					contract_data = r.text
 
 				elif (".docx" in f.filename.lower()):
-					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Accept" : "text/plain"})
+					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Accept" : "text/plain"})
 					contract_data = r.text
 
 				elif (".doc" in f.filename.lower()):
-					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/msword", "Accept" : "text/plain"})
+					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/msword", "Accept" : "text/plain"})
 					contract_data = r.text
 
 				elif (".rtf" in f.filename.lower()):
-					r=requests.put("http://localhost:8984/tika", data=output, headers={"Content-type" : "application/rtf", "Accept" : "text/plain"})
+					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/rtf", "Accept" : "text/plain"})
 					contract_data = r.text
 
 				elif (".txt" in f.filename.lower()): 

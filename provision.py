@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import MySQLdb
+import config
 
 # create provision_db
 # CREATE DATABASE provision_db;
@@ -30,7 +31,8 @@ class ProvisionMiner(object):
 
 	def __init__(self):
 		# raise on error on failure
-		self.db = self.connect()
+		mysql = config.load_mysql()
+		self.db = self.connect(host=mysql['host'], user=mysql['user'], passwd=mysql['passwd'], db_name=mysql['db_name'])
 
 	def __del__(self):
 		if hasattr(self, 'db'):
