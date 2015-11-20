@@ -260,6 +260,8 @@ def load_meta_info():
    datastore.tag_classified(str(info['_id']), tag_uni)
    info = datastore.fetch_by_filename('nda-0000-0057.txt')
    datastore.tag_classified(str(info['_id']), tag_uni)
+   info = datastore.fetch_by_filename('nda-0000-0058.txt')
+   datastore.tag_classified(str(info['_id']), tag_uni)
 
    print("loaded the meta data about nondisclosures.")
 
