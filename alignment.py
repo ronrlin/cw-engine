@@ -14,6 +14,7 @@ from structure import load_training_data
 from structure import get_provision_name_from_file
 from trainer import Trainer
 from feature import Feature
+from provision import ProvisionMiner
 
 import numpy as np
 
@@ -22,6 +23,7 @@ DATA_PATH = os.path.join(BASE_PATH, "data/")
 
 COUNT_VECT = 1
 TFIDF_VECT = 2
+staticMode = False
 
 """
 Alignment describes the process by which agreements of the same kind of are compared
@@ -259,6 +261,18 @@ class Alignment(object):
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         return tokenizer.tokenize(content)
 
+    def get_new_alt_text(self, provision_type, text, increment=0):
+        if increment > 0:
+            new_text = ""
+        else:
+            agreement_type = self.schema.get_agreement_type()
+            pm = ProvisionMiner()
+            new_text = pm.find_better(provision_type, agreement_type)
+
+        new_text_block = "<span id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + new_text + "</span>"
+        alt_text = "<div id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
+        return alt_text
+
     def get_alt_text(self, provision_type, text, increment=0):
         """ Get the alternate and redlined text. """
         new_text = "There will be new text here."
@@ -287,11 +301,7 @@ class Alignment(object):
             else:
                 new_text = ""
 
-        # Instantiate the ProvisionDB
-        #from provision import ProvisionMiner
-        #pm = ProvisionMiner()
         agreement_type = self.schema.get_agreement_type()
-        #new_text = pm.find_better(provision_type, agreement_type)
         new_text_block = "<span id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + new_text + "</span>"
         alt_text = "<div id='provision-" + get_provision_name_from_file(provision_type, True) + "-" + str(increment) + "' class='provision " + get_provision_name_from_file(provision_type, True) + "'>" + "<span class='strikethrough'>" + text + "</span>" + " " + new_text_block + "</div>"
         return alt_text
@@ -353,7 +363,11 @@ class Alignment(object):
 
                 if redline and (comp_score > thresholds["complexity"]):
                     print("do a redline for %s provision" % _type)
-                    text = self.get_alt_text(_type, text, inc[_type])
+                    if staticMode:
+                       text = self.get_alt_text(_type, text, inc[_type])
+                    else:
+                       text = self.get_new_alt_text(_type, text, inc[_type])
+
                 else:
                     print("no need to redline %s provision" % _type)
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
