@@ -45,6 +45,7 @@ class Alignment(object):
         self.schema = schema
         self.concept_dict = None
         self.tag_dict = None
+        self.raw_content = None
         self.thresholds = {
             "complexity" : 0,
             "similarity" : 0,
@@ -62,7 +63,7 @@ class Alignment(object):
 
         # provisions is a tuple (provision_name, provision_path)
         training_file_names = [p[1] for p in provisions]
-        provision_names = [p[0] for p in provisions]
+        #provision_names = [p[0] for p in provisions]
 
         import time
         start_time = time.time()
@@ -258,6 +259,7 @@ class Alignment(object):
         :param content: is a string that is to be tokenized
         return list of strings
         """
+        self.raw_content = content
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         return tokenizer.tokenize(content)
 
@@ -396,7 +398,7 @@ class Alignment(object):
         self.thresholds = thresholds
         return
 
-    def build_tag_dict(self, document):
+    def build_tag_dict(self):
         tags = self.schema.get_tags()
         tupled = []
         output = []
@@ -428,7 +430,7 @@ class Alignment(object):
                 classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
                 classifier.fit()
                 result['type'] = tag_name
-                result['category'] = classifier.classify_data([document])
+                result['category'] = classifier.classify_data([self.raw_content])
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = '' #TODO: this is how the tags get displayed
                 output.append(result)
