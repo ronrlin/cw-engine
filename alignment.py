@@ -470,7 +470,7 @@ class Alignment(object):
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
         
-        self.build_tag_dict(doc)
+        self.build_tag_dict()
 
         docstats = {}
         docstats["doc-similarity-score"] = astats.calculate_similarity(doc, self.agreement_corpus)
