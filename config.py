@@ -65,6 +65,14 @@ def load_settings_file():
 	config.read("./settings.ini")
 	return config
 
+def is_static_mode():
+	config = load_settings_file()
+	mode = config['general']['static_mode']
+	if mode == "True":
+		return True
+	else:
+		return False
+
 def load_tika():
 	config = load_settings_file()
 	params = dict()

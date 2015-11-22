@@ -362,8 +362,10 @@ class Alignment(object):
                 # consider a utility function here
 
                 if redline and (comp_score > thresholds["complexity"]):
+                    import config
+                    print("static mode status is %s" % str(config.is_static_mode()))
                     print("do a redline for %s provision" % _type)
-                    if staticMode:
+                    if config.is_static_mode():
                        text = self.get_alt_text(_type, text, inc[_type])
                     else:
                        text = self.get_new_alt_text(_type, text, inc[_type])
