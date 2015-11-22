@@ -42,6 +42,7 @@ class Alignment(object):
         """
         self.schema = schema
         self.concept_dict = None
+        self.tag_dict = None
         self.thresholds = {
             "complexity" : 0,
             "similarity" : 0,
@@ -379,7 +380,7 @@ class Alignment(object):
         self.thresholds = thresholds
         return
 
-    def get_tags(self, document):
+    def build_tag_dict(self, document):
         tags = self.schema.get_tags()
         tupled = []
         output = []
@@ -421,7 +422,8 @@ class Alignment(object):
                 result['category'] = ""
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = '' #TODO: this is how the tags get displayed
-        return output
+        self.tag_dict = output
+        return 
 
     def get_concept_detail(self):
         concept_detail = {}
@@ -440,24 +442,26 @@ class Alignment(object):
         score = ((1 - doc_complexity/group_complexity) + (doc_similarity/group_similarity))/2 * 100
         return round(score, 1)
 
-    def get_detail(self, tupleized, redline=False):
-        # Collect contract_group statistics from datastore
+    def calc_provisionstats(self, tupleized):
+        from statistics import AgreementStatistics
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
-        from statistics import AgreementStatistics
         astats = AgreementStatistics(tupleized)
         aparams = astats.calculate_stats()
         # doc is the text of the agreement, formed by joining all the text blocks in the tuple
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
         
-        doc_similarity_score = astats.calculate_similarity(doc, self.agreement_corpus)
-        doc_complexity_score = aparams['doc_gulpease']
-        group_similarity_score = round(contract_group['group-similarity-score'], 1)
-        group_complexity_score = round(contract_group['group-complexity-score'], 1)
+        self.build_tag_dict(doc)
 
-        print("scroll through tupleized to generate provisionstats")
+        docstats = {}
+        docstats["doc-similarity-score"] = astats.calculate_similarity(doc, self.agreement_corpus)
+        docstats["doc-complexity-score"] = aparams['doc_gulpease']
+        docstats["group-similarity-score"] = round(contract_group['group-similarity-score'], 1)
+        docstats["group-complexity-score"] = round(contract_group['group-complexity-score'], 1)
+
         provisionstats = {}
+        print("scroll through tupleized to generate provisionstats")
         for (_block, _type) in tupleized:
             # Collect provision_group statistics from datastore
             provision_mach_name = get_provision_name_from_file(_type, dashed=False)
@@ -486,27 +490,26 @@ class Alignment(object):
                 #provisionstats[provision_name] = {}
                 pass
 
+        return (docstats, provisionstats)
+
+    def get_detail(self, tupleized, redline=False):
+        (docstats, provisionstats) = self.calc_provisionstats(tupleized)
         self.set_thresholds(provisionstats)
-
-        redlinebonus = 0
-        if redline:
-            redlinebonus = 3
-
+        
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
-            'agreement_type' : self.schema.get_agreement_type(), # get this from contract_group_info
-            'text-compare-count' : len(self.agreement_corpus.fileids()), # get this from contract_group_info
-            # doc-similarity is this doc compared to the group
-            'doc-similarity-score' : doc_similarity_score, # contract_group['doc-similarity-score'] get this from contract_group_info 
-            'doc-complexity-score' : doc_complexity_score,
-            'doc-simplicity-score' : 100 - doc_complexity_score,
-            'group-similarity-score' : group_similarity_score, # get this from contract_group_info
-            'group-complexity-score' : group_complexity_score, # get this from contract_group_info
-            'group-simplicity-score' : 100 - group_complexity_score, # get this from contract_group_info
-            'contractwiser-score' : self.compute_score(doc_similarity_score, group_similarity_score, doc_complexity_score, group_complexity_score),#round(100, 1),
+            'agreement_type' : self.schema.get_agreement_type(), 
+            'text-compare-count' : len(self.agreement_corpus.fileids()), 
+            'doc-similarity-score' : docstats["doc-similarity-score"],  
+            'doc-complexity-score' : docstats["doc-complexity-score"],
+            'doc-simplicity-score' : 100 - docstats["doc-complexity-score"],
+            'group-similarity-score' : docstats["group-similarity-score"], 
+            'group-complexity-score' : docstats["group-complexity-score"], 
+            'group-simplicity-score' : 100 - docstats["group-complexity-score"], 
+            'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
             'complexity-threshold' : self.thresholds["complexity"],
-            'tags' : self.get_tags(doc),
+            'tags' : self.tag_dict,
         }
 
         document['provisions'] = provisionstats
