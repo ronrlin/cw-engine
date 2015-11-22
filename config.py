@@ -81,7 +81,7 @@ def load_mongo():
 	mongo_params['port'] = int(config['mongo']['port'])
 	return mongo_params
 
-def load_mysql(self):
+def load_mysql():
 	config = load_settings_file()
 	mysql_params = dict()
 	mysql_params['db_name'] = config['mysql']['db_name']
