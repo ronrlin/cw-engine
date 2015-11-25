@@ -63,6 +63,7 @@ class ProvisionStatistics(object):
 		Returns a floating point value.
 		"""
 		fileids = self.corpus.fileids()
+		# TODO: don't use sents()!
 		provisions = [" ".join(sent) for fileid in fileids for sent in self.corpus.sents(fileid)]
 		vect = TfidfVectorizer(min_df=1)
 		# if text is specified, then append it to the list to be vectorized.
