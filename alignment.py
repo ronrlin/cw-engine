@@ -360,10 +360,11 @@ class Alignment(object):
                 comp_score = provisionstats[provision_name]["prov-complexity-score"]
                 comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
                 cw_score = provisionstats[provision_name]["contractwiser-score"]
-                print("similarity: %s and complexity: %s" % (sim_score, comp_score))
+                consensus_score = provisionstats[provision_name]["consensus-percentage"]
+                print("similarity: %s and complexity: %s and consensus %s" % (sim_score, comp_score, consensus_score))
                 # consider a utility function here
-
-                if redline and (comp_score > thresholds["complexity"]):
+                # consider trying consensus
+                if redline and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
                     import config
                     print("static mode status is %s" % str(config.is_static_mode()))
                     print("do a redline for %s provision" % _type)

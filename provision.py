@@ -85,7 +85,7 @@ class ProvisionMiner(object):
 		if not result:
 			print("throw an exception")
 			result = dict()
-			result['provision_text'] = "There will be new text here."			
+			result['provision_text'] = ""
 		cursor.close()
 		return result['provision_text'] 
 
