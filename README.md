@@ -4,10 +4,12 @@
 
 git clone git@github.com:ronrlin/cw-engine.git cw-engine/
 
-### Installing AgreementCorpus and data
+### Installing AgreementCorpus and data (still in beta)
+* This routine will pull a tarball from AWS S3 and unpack it to the /data directory.
 
-cd cw-engine
-python config.py
+> python
+> import config
+> config.retrieve_and_load_data()
 
 ### Installing Flask & Libraries
 
