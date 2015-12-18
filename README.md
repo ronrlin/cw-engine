@@ -7,38 +7,37 @@ git clone git@github.com:ronrlin/cw-engine.git cw-engine/
 ### Installing AgreementCorpus and data (still in beta)
 * This routine will pull a tarball from AWS S3 and unpack it to the /data directory.
 
-python
-import config
-config.retrieve_and_load_data()
+# python
+# import config
+# config.retrieve_and_load_data()
 
 ### Installing Flask & Libraries
 
-sudo apt-get install python-mysqldb
-
-pip install -r requirements.txt -t lib
+#sudo apt-get install python-mysqldb
+#pip install -r requirements.txt -t lib
 
 ### Installing the cw-engine
 
 # clone the repository
-git clone git@github.com:ronrlin/cw-engine.git cw-engine/
+# git clone git@github.com:ronrlin/cw-engine.git cw-engine/
 
 # rename the settings default file
-cp settings-init.ini to settings.ini
+# cp settings-init.ini to settings.ini
 
 # customize the settings.ini
 
 # bootstrap data system
-> python
-import helper
-helper.create_universe()
+# python
+# import helper
+# helper.create_universe()
 
-import provision
-provision.create_system()
+# import provision
+# provision.create_system()
 
-import statistics
-statistics.compute_classified_stats()
-statistics.compute_contract_group_info()
-statistics.compute_provision_group_info()
+# import statistics
+# statistics.compute_classified_stats()
+# statistics.compute_contract_group_info()
+# statistics.compute_provision_group_info()
 
 ### Running Tika
 
