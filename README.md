@@ -31,7 +31,8 @@ pip install -r requirements.txt -t lib
 # customize the settings.ini
 
 # bootstrap data system
-```python
+```
+python
 import helper
 helper.create_universe()
 
