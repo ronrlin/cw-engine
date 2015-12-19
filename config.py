@@ -73,6 +73,13 @@ def is_static_mode():
 	else:
 		return False
 
+def load_ner():
+	config = load_settings_file()
+	params = dict()
+	params['hostname'] = config['ner']['hostname']
+	params['port'] = config['ner']['port']
+	return params
+
 def load_tika():
 	config = load_settings_file()
 	params = dict()
