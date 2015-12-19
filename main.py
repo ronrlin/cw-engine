@@ -41,8 +41,6 @@ print("Loading the agreement classifier...")
 classifier = get_agreement_classifier_v1(corpus)
 print("Application ready to load.")
 
-sane_mode = True
-
 class InvalidUsage(Exception):
     status_code = 400
 
@@ -185,6 +183,39 @@ def handle_redline(contract_id=None):
 	detail = aligner.get_detail(aligned_provisions, redline=True)
 	# Create the JSON response to the browser
 	return json.dumps(detail)
+
+@app.route('/contract/<contract_id>/standard', methods=['PUT', 'DELETE'])
+def handle_standards(contract_id=None):
+	contract = datastore.get_contract(contract_id)
+	if (contract is None):
+		raise InvalidUsage("Contract id %s was not found" % contract_id, status_code=404)
+	schema = AgreementSchema()
+	schema.load_schema(contract['agreement_type'])
+	if request.method == 'PUT':
+		# set the contract as a standard
+		datastore.set_standard(contract_id)
+		# Start alignment
+		aligner = Alignment(schema=schema, vectorizer=2, all=True)
+		paras = aligner.tokenize(contract['text'])
+		aligned_provisions = aligner.align(paras, version=2)
+		# write provisions to provision_db
+		for proviso in aligned_provisions:
+			ptext = proviso[0]
+			ptype = proviso[1]
+			pm = ProvisionMiner()
+			pm.create_provision_selection(ptext, ptype, 100, 50, contract['agreement_type'], owner_id=contract_id)
+		print("contract %s was made a standard." % contract_id)
+
+	elif request.method == 'DELETE':
+		# get the contract
+		contract = datastore.get_contract(contract_id)
+		datastore.unset_standard(contract_id)
+		# TODO: delete all the provisions associated to contract_id
+		#delete_provision_selection(contract_id)
+
+	# Create the JSON response to the browser
+	return True
+
 
 @app.route('/users')
 def users():
