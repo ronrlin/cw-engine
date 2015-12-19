@@ -20,6 +20,8 @@ Instructions on creating environment:
 | id             | int(11) | NO   | PRI | NULL    | auto_increment |
 | provision_text | text    | YES  |     | NULL    |                |
 | provision_type | int(11) | YES  |     | NULL    |                |
+
+| owner_id		 | int(11) | YES  |     | NULL    |                |
 | score          | int(11) | YES  |     | NULL    |                |
 
 scope varchar(99)
@@ -63,11 +65,18 @@ class ProvisionMiner(object):
 			cursor.execute("INSERT INTO provision_lookup(type_name, agreement_type) VALUES(%s, %s)", (ptype, agreement_type))
 			provision_type_id = cursor.lastrowid
 		# create the selection record
-		cursor.execute("INSERT INTO provision_selection(provision_text, provision_type, score, complexity_score, owner_id) VALUES(%s, %s, %s, %s, %s)", (ptext, provision_type_id, pscore, comscore, None))
+		cursor.execute("INSERT INTO provision_selection(provision_text, provision_type, score, complexity_score, owner_id) VALUES(%s, %s, %s, %s, %s)", (ptext, provision_type_id, pscore, comscore, owner_id))
 		selection_id = cursor.lastrowid
 		self.db.commit()
 		cursor.close()
 		return selection_id
+
+	def delete_provision_selection(self, owner_id):
+		cursor = self.db.cursor(MySQLdb.cursors.DictCursor)
+		cursor.execute("DELETE FROM provision_selection WHERE owner_id = %s", (owner_id))
+		self.db.commit()
+		cursor.close()
+		return
 
 	def find_better(self, provision_type, agreement_type):
 		""" Query to find the best provision """
