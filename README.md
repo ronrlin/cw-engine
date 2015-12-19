@@ -31,11 +31,21 @@ pip install -r requirements.txt -t lib
 # customize the settings.ini
 
 # bootstrap data system
+1. Run 'python' from CLI
+2. Load the mongo helper module.
+
 ```
-python
 import helper
 helper.create_universe()
+```
 
+3. Initialize mysql
+```
+create schema %name
+```
+
+4. Load the mysql provision module
+```
 import provision
 provision.create_system()
 
@@ -47,6 +57,12 @@ statistics.compute_provision_group_info()
 ### Running Tika
 ```
 java -jar /home/obironkenobi/Projects/cw-engine/tika/tika-server-1.10.jar --port=8984
+```
+
+### Running Stanford NER
+```
+cd STANFORD_HOME
+java -mx1000m -cp stanford-ner.jar edu.stanford.nlp.ie.NERServer     -loadClassifier classifiers/english.muc.7class.distsim.crf.ser.gz     -port 8081 -outputFormat inlineXML
 ```
 
 ### Feedback
