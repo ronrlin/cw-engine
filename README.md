@@ -41,7 +41,7 @@ helper.create_universe()
 
 3. Initialize mysql
 ```
-create schema %name
+create schema $provision_db
 ```
 
 4. Load the mysql provision module
