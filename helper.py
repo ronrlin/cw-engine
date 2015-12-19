@@ -437,6 +437,26 @@ class WiserDatabase(object):
       result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : {'agreement_type' : agreement_type}})
       return result
 
+   def set_standard(self, contract_id):
+      """ 
+         Update the contract record
+         :param contract_id: string of the contract_id
+
+         Returns an UpdateResult object 
+      """
+      result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : {'is_standard' : True}})
+      return result
+
+   def unset_standard(self, contract_id):
+      """ 
+         Update the contract record
+         :param contract_id: string of the contract_id
+
+         Returns an UpdateResult object 
+      """
+      result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : {'is_standard' : False}})
+      return result
+
    def tag_contract(self, contract_id, tag_dict={}):
       result = self.contracts.update_one({'_id' : ObjectId(contract_id)}, { '$set' : tag_dict})
       return result     
