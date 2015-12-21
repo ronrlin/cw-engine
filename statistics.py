@@ -126,6 +126,23 @@ class CorpusStatistics(object):
 		similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
 		return round(similarity_avg, 1)
 
+	def most_similar(self, doc, limit=5):
+		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids()]
+		docs.insert(0, doc)
+		vect = TfidfVectorizer(min_df=1)
+		tfidf = vect.fit_transform(docs)
+		from sklearn.metrics.pairwise import linear_kernel
+		cosine_similarities = linear_kernel(tfidf[0:1], tfidf).flatten()
+		neg_idx = limit * -1
+		related_docs_indices = cosine_similarities.argsort()[:neg_idx:-1]
+
+		import numpy as np
+		fileids = self.corpus.fileids()
+		fileids.insert(0, "newone")
+		fileids = np.array(fileids)
+
+		return(fileids[related_docs_indices[1:]])
+
 	def calculate_complexity(self, category=None):
 		"""
 		Calculates a global doc-to-doc complexity average for a corpus of interest.
@@ -252,7 +269,7 @@ def compute_classified_stats():
 			doc = corpus.raw(filename)
 			paras = aligner.tokenize(doc)
 			aligned_provisions = aligner.align(paras, version=2) # aligned_provisions is a list of tuples
-			aligned_provisions = aligner.sanity_check(aligned_provisions)
+			#aligned_provisions = aligner.sanity_check(aligned_provisions)
 
 			analysis = AgreementStatistics(tupleized=aligned_provisions)
 			stats = analysis.calculate_stats()
@@ -266,6 +283,8 @@ def compute_classified_stats():
 						stats['has_' + _type.replace("train/train_", "")] = True
 					else:
 						stats['has_' + _type] = True
+
+					#NER here?
 
 			print("update the datastore")
 			result = datastore.update_record(filename=filename, parameters=stats)
