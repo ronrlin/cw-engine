@@ -43,6 +43,14 @@ class AgreementSchema(object):
 		self.provisions = config.items('provisions')
 		self.concepts = config.items('concepts')
 		self.tags = config.items('tags')
+		self.entities = config.items('entities')
+
+	def get_entities(self):
+		"""
+		Returns a list of tuples which contain (tag_name, tag_values). 
+		:param tag_values: may contain comma-separated values. 
+		"""		
+		return self.entities
 
 	def get_tags(self):
 		"""
