@@ -27,8 +27,7 @@ initialize the statistics about provision_groups and
 contract_groups.  
 
 >>> import statistics
-/usr/local/lib/python2.7/dist-packages/numpy/core/fromnumeric.py:2507: VisibleDeprecationWarning: `rank` is deprecated; use the `ndim` attribute or function instead. To find the rank of a matrix see `numpy.linalg.matrix_rank`.
-  VisibleDeprecationWarning)
+>>> statistics.compute_classified_stats()
 >>> statistics.compute_contract_group_info()
 >>> statistics.display_contract_group_info()
 >>> statistics.compute_provision_group_info()
@@ -405,7 +404,7 @@ class WiserDatabase(object):
    def update_record(self, filename, parameters):
       """ """
       parameters['filename'] = filename
-      result = self.collection.replace_one({'filename' : filename}, parameters)
+      result = self.collection.update_one({'filename' : filename}, {"$set" : parameters})
       print("matched_count : %d" % result.matched_count)
       return result
 
