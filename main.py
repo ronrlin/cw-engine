@@ -100,42 +100,31 @@ def contract():
 				print("Tika is being accessed at %s" % tika_url)
 				if (".pdf" in f.filename.lower()):					
 					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/pdf", "Accept" : "text/plain"})
-					contract_data = r.text
+					contract_data = r.text.encode("ascii", "replace")
+					contract_data = contract_data.replace("?", " ")
 
 				elif (".docx" in f.filename.lower()):
 					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Accept" : "text/plain"})
-					contract_data = r.text
+					contract_data = r.text.encode("ascii", "replace")
+					contract_data = contract_data.replace("?", " ")
 
 				elif (".doc" in f.filename.lower()):
 					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/msword", "Accept" : "text/plain"})
-					contract_data = r.text
+					contract_data = r.text.encode("ascii", "replace")
+					contract_data = contract_data.replace("?", " ")
 
 				elif (".rtf" in f.filename.lower()):
 					r=requests.put(tika_url, data=output, headers={"Content-type" : "application/rtf", "Accept" : "text/plain"})
-					contract_data = r.text
+					contract_data = r.text.encode("ascii", "replace")
+					contract_data = contract_data.replace("?", " ")
 
 				elif (".txt" in f.filename.lower()): 
-					try:
-						contract_data = unicode(f.stream.getvalue(), errors="ignore")
-						contract_data = contract_data.decode('utf-8')
-					except UnicodeDecodeError:
-						raise InvalidUsage("Did not provide a valid file format.", status_code=400)
+					r=requests.put(tika_url, data=output, headers={"Content-type" : "text/plain", "Accept" : "text/plain"})
+					contract_data = r.text.encode("ascii", "replace")
+					contract_data = contract_data.replace("?", " ")
 			else:
 				raise InvalidUsage("Did not provide an allowed file format.", status_code=400)
 
-		else:
-			d = json.loads(request.data)
-			contract_data = d.get('text', None)
-
-			if not contract_data:
-				app.logger.error('Could not find field named text in request.data')
-				raise InvalidUsage("Did not provide a parameter named 'text'", status_code=400)
-			contract_data = d['text']
-
-		# Analyze the contract
-		#print("---------------")
-		#print(contract_data)
-		#print("---------------")
 		agreement_type = classifier.classify_data([contract_data])
 		print("The uploaded agreement was classified as a %s agreement." % agreement_type)
 		# Add contract_data to the datastore
@@ -161,6 +150,7 @@ def handle_contract(contract_id=None):
 		# Start alignment
 		aligner = Alignment(schema=schema, vectorizer=2, all=True)
 		paras = aligner.tokenize(contract['text'])
+		paras = aligner.simplify(paras)
 		aligned_provisions = aligner.align(paras, version=2)
 		detail = aligner.get_detail(aligned_provisions, redline=False)
 		# Create the JSON response to the browser
@@ -180,6 +170,7 @@ def handle_redline(contract_id=None):
 	aligner = Alignment(schema=schema, vectorizer=2, all=True)
 	paras = aligner.tokenize(contract['text'])
 	aligned_provisions = aligner.align(paras, version=2)
+	paras = aligner.simplify(paras)
 	detail = aligner.get_detail(aligned_provisions, redline=True)
 	# Create the JSON response to the browser
 	return json.dumps(detail)
