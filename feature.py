@@ -51,6 +51,12 @@ class Feature(object):
 			doc = self.blank_tokenize(alltext)
 			stats = self.calc_stats(doc)
 			tagged_sents += zip([fileid] * len(doc), doc)
+			# there may be a way to append the location of provisions
+			# if fileid == "train_title":
+			# 		[ stats stats stats ]
+			# 		for s in stats:  
+			#			s['paragraph_position'] = titlelist.pop()
+			#		stats = [s['paragraph_position'] = t.pop() for s in stats]
 			sents_stats += zip([fileid] * len(doc), stats)
 
 		end_time = time.time()
@@ -83,9 +89,14 @@ class Feature(object):
 		b = BlanklineTokenizer()
 		return b.tokenize(content)
 
-	def calc_stats(self, sent_toks):
+	# TODO: you can eliminate position_flag
+	# pass the pos_arr with the values that need to be added for position
+	def calc_stats(self, sent_toks, position_flag=False):
 		""" calculate statistics about paragraphs.
 		:sent_toks: list of strings 
+
+		might want to consider a position_flag=False
+		to ignore position for training files
 		""" 
 		para_meta = []
 		index = 0
@@ -112,11 +123,19 @@ class Feature(object):
 			stats['by_count'] = paragraph.count("By")
 			stats['hasPrintedName'] = "printed name" in paragraph.lower()
 			stats['hasWitnessWhereof'] = paragraph.count("IN WITNESS WHEREOF")
-
-			if index > 0:
-				stats['colon_prev'] = para_meta[index-1]['colon']
+			#TODO: you might want to use some NER here.  For example, containsORGANIZATION
+			# containsDATE, containsMONEY
+			#TODO: might want to consider incidence of cardinal numbers
+			# while using nltk.ne_chunk( looking for CD )
+			if position_flag:
+				stats['position_index'] = index
+				if index > 0:
+					stats['colon_prev'] = para_meta[index-1]['colon']
+				else:
+					stats['colon_prev'] = 0
 			else:
-				stats['colon_prev'] = 0
+				pass
+
 			stats['bracket_open'] = paragraph.count("[")
 			stats['bracket_close'] = paragraph.count("]")
 			stats['paren_open'] = paragraph.count("(")
