@@ -45,6 +45,7 @@ class Alignment(object):
         self.schema = schema
         self.concept_dict = None
         self.tag_dict = None
+        self.entity_dict = None
         self.raw_content = None
         self.thresholds = {
             "complexity" : 0,
@@ -210,24 +211,34 @@ class Alignment(object):
         print("using version %s (2 = Blankline tokenizer)" % str(version))
         tupleized = self.aligncore(content=content, version=version)
         # Inspect the features of tupleized
+        # tags
+        self.build_tag_dict(tupleized)
+        self.build_entities_dict(tupleized)
+
         feature = Feature()
+        # TODO: you should pass tupleized into text_identify
         self.provision_features = feature.text_identify(content)
         # Build a concepts dictionary that will be used in get_markup
         self.build_concepts(tupleized)
-        # Use features to perform a sanity check
-        # TODO: bring Feature() into sanity_check
-        tupleized = self.sanity_check(tupleized)
+        
+        # ContractGenome Fit goes here?
+        # TODO: Based on the tupleized classification, the feature classification,         
+        print("about to do sanity check")
+        print([b for (a,b) in self.provision_features])
+        #tupleized = self.sanity_check(tupleized)
         return tupleized
 
     def sanity_check(self, tupleized):
         """ Suppresses bad classification """ 
+        # TODO: suppress output if a provision is "nonconsensus" (<20%?)
         #provision_features = [("some text", 'features/feature_title_paragraph'),("some text", 'features/feature_title_paragraph', "some text")]
         provision_features = self.provision_features
         new_tupleized = []
         for i, (provision, _type) in enumerate(tupleized):
             feature_type = provision_features[i][1]
-            if ("title_paragraph" in feature_type):
-                new_tupleized.append((provision, ""))
+            self.provisionstats[_type]
+            if ("title_paragraph" in feature_type): 
+                new_tupleized.append((provision, "")) #consider renaming to recitals
             elif ("signature_line" in feature_type):
                 new_tupleized.append((provision, ""))
             elif ("definitions" in feature_type):
@@ -362,9 +373,14 @@ class Alignment(object):
                 cw_score = provisionstats[provision_name]["contractwiser-score"]
                 consensus_score = provisionstats[provision_name]["consensus-percentage"]
                 print("similarity: %s and complexity: %s and consensus %s" % (sim_score, comp_score, consensus_score))
+
                 # consider a utility function here
                 # consider trying consensus
-                if redline and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
+                # consider redlining only the "required provisions"
+                reqs = [filename for (prov, filename) in self.schema.get_provisions()]
+                print("reqs for comp to %s" % _type)
+                print(reqs)
+                if (redline and _type in reqs) and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
                     import config
                     print("static mode status is %s" % str(config.is_static_mode()))
                     print("do a redline for %s provision" % _type)
@@ -399,10 +415,99 @@ class Alignment(object):
         self.thresholds = thresholds
         return
 
-    def build_tag_dict(self):
+    def build_entities_dict(self, tupleized):
+        #tags = self.schema.get_tags()
+        entities = self.schema.get_entities()
+        tupled = []
+        output = []
+
+        import ner
+        import config
+        ner_settings = config.load_ner()
+        tagger = ner.SocketNER(host=ner_settings['hostname'], port=int(ner_settings['port']))
+
+        # Let's build up a dictionary of global named entities
+        globalnerz = tagger.get_entities(self.raw_content)
+        for k in globalnerz.keys():
+            result = {}
+            result['type'] = k
+            result['category'] = k
+            # TODO: look here for adding smart
+            result['text'] = globalnerz[k]
+            result['reference-info'] = ''
+            output.append(result)
+
+        #somehow check the length? 
+        for tag in entities:
+            # tag is a tuple
+            tag_name = tag[0]
+            tag_values = tag[1].split(",") # list of all possible values
+
+            if len(tag_values) == 1:
+                # only look for things in _blocks of the same provision _type
+                print("searching in %s" % tag_name)
+                search_text = [_block for (_block, _type) in tupleized if tag_name in _type]
+                search_text = " ".join(search_text)
+                nerz = tagger.get_entities(search_text)
+                result = {}
+                if (nerz.get(tag_values[0]) != None):
+                    result['type'] = tag_name + "_" + tag_values[0]
+                    result['category'] = get_tag_text(tag_name + "_" + tag_values[0])
+                    result['reference-info'] = '' #some id into a reference db
+                    if nerz[tag_values[0]][0] == "App Inc.":
+                        result['text'] = "List App, Inc."
+                    else:
+                        result['text'] = nerz[tag_values[0]][0]
+
+                    output.append(result)
+                else: 
+                    result['type'] = tag_name + "_" + tag_values[0]
+                    result['category'] = get_tag_text(tag_name + "_" + tag_values[0])
+                    result['reference-info'] = '' #some id into a reference db
+                    if tag_values[0] in globalnerz.keys():
+                        result['text'] = globalnerz[tag_values[0]][0]
+                    else:
+                        result['text'] = "None"
+                    output.append(result)
+
+                import nltk 
+                sentences = nltk.sent_tokenize(search_text)
+                tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
+                tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
+                if tagged_sentences:
+                    cardinalnum = [word for sent in tagged_sentences for (word, pos) in sent if pos == "CD"]
+                    if cardinalnum:
+                        print("cardinal numbers found")
+                        print(cardinalnum)
+                        result = {}
+                        result['type'] = tag_name + "_cardinal_number"
+                        result['category'] = tag_name + "_cardinal_number"
+                        result['reference-info'] = '' #some id into a reference db
+                        result['text'] = cardinalnum
+                        output.append(result)
+
+                import re
+                duration_match = []
+                for m in re.finditer("\(?\d+\)? (years|months|days)", search_text):                
+                    duration_match.append(m.group(0))
+
+                if duration_match:
+                    result = {}
+                    result['type'] = tag_name + "_duration"
+                    result['category'] = tag_name + "_duration"
+                    result['reference-info'] = '' #some id into a reference db
+                    result['text'] = duration_match
+                    output.append(result)
+
+        self.entity_dict = output
+        print(self.entity_dict)
+        return         
+
+    def build_tag_dict(self, tupleized):
         tags = self.schema.get_tags()
         tupled = []
         output = []
+
         for tag in tags:
             # tag is a tuple
             tag_name = tag[0]
@@ -432,15 +537,17 @@ class Alignment(object):
                 classifier.fit()
                 result['type'] = tag_name
                 result['category'] = classifier.classify_data([self.raw_content])
-                result['reference-info'] = '' #some id into a reference db
-                result['text'] = '' #TODO: this is how the tags get displayed
+                result['reference-info'] = get_reference_info(tag_name, result['category']) #some id into a reference db
+                result['text'] = get_tag_text(tag_name) #TODO: this is how the tags get displayed
                 output.append(result)
             else: # marked for removal
                 print("problem in get_tag!")
-                result['type'] = ""
+                result['type'] = "ERROR"
                 result['category'] = ""
-                result['reference-info'] = '' #some id into a reference db
-                result['text'] = '' #TODO: this is how the tags get displayed
+                result['reference-info'] = 'ERROR' #some id into a reference db
+                result['text'] = 'ERROR' #TODO: this is how the tags get displayed
+                output.append(result)
+
         self.tag_dict = output
         return 
 
@@ -458,11 +565,45 @@ class Alignment(object):
         return concept_detail
 
     def compute_score(self, doc_similarity, group_similarity, doc_complexity, group_complexity):
+        points = 0
+        # agreement term - 10 points
+        # disclosure type - 10 points
+        # 0-10 similarity of confidential info
+        # 0-10 similarity of document
+        # 0-5 simplicity of document
+        # 25 for all req'd provisions
+        # 0-20 for similarity to the standard
+        """
+        # search entity_dict for time_period_DATE
+        term = [entity for entity in self.entity_dict if entity['type'] == 'time_period_DATE']
+        if term[0]['text']:
+            points += 10
+
+        # search tag_dict for disclosure_type
+        disclosure_type = [tag for tag in self.tag_dict if tag['type'] = 'disclosure_type']
+        if disclosure_type[0]['text'] == 'mutual':
+            points += 10
+        else:
+            points += 5
+
+        provisions_found = set([_type for (_block, _type) in tupleized])
+        provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
+        missing = set(provisions_expected) - set(provisions_found)
+        if not missing: 
+            points += 25
+        else:
+            points += len(provisions_found) * (25 / len(provisions_expected))
+
+        """
+        # compare tupleized with self.schema.get_provisions()
+        # calculate similarity with a standard
+
         score = ((1 - doc_complexity/group_complexity) + (doc_similarity/group_similarity))/2 * 100
         return round(score, 1)
 
     def calc_provisionstats(self, tupleized):
         from statistics import AgreementStatistics
+
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
         astats = AgreementStatistics(tupleized)
@@ -471,8 +612,6 @@ class Alignment(object):
         doc = [e[0] for e in tupleized]
         doc = " ".join(doc)
         
-        self.build_tag_dict()
-
         docstats = {}
         docstats["doc-similarity-score"] = astats.calculate_similarity(doc, self.agreement_corpus)
         docstats["doc-complexity-score"] = aparams['doc_gulpease']
@@ -504,17 +643,32 @@ class Alignment(object):
                     "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
                     #"provision-tag" : "some-label", # computed on the fly
                 }
-            else: 
-                # TODO: log an error here and, raise an error about not having data for this
-                #provisionstats[provision_name] = {}
-                pass
+            else:
+                pass 
+                #print("did not find provision_group for %s" % provision_mach_name)
+                # TODO: You may want to log an error here, 
+                # or handle more elegantly provisions that have been sanitized. 
+                # ie: In some cases, provision_group_info == ""
 
         return (docstats, provisionstats)
 
     def get_detail(self, tupleized, redline=False):
         (docstats, provisionstats) = self.calc_provisionstats(tupleized)
         self.set_thresholds(provisionstats)
-        
+
+        doc = [e[0] for e in tupleized]
+        doc = " ".join(doc)
+
+        from statistics import CorpusStatistics
+        cstats = CorpusStatistics(self.agreement_corpus)
+        similar_files = list(cstats.most_similar(doc))
+        newtag = {}
+        newtag["type"] = "most_similar"
+        newtag["category"] = ", ".join(similar_files)
+        newtag["text"] = get_tag_text(newtag["type"])
+        newtag["reference-info"] = ""
+        self.tag_dict.append(newtag)
+
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
@@ -529,11 +683,37 @@ class Alignment(object):
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
             'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.tag_dict,
+            'entities' : self.entity_dict,
         }
 
         document['provisions'] = provisionstats
         document['concepts'] = self.get_concept_detail()
         return document
+
+def get_tag_text(tag_name):
+    """ Eventually, this should be information in a database."""
+    if tag_name == "disclosure_type":
+        return """When you have to share sensitive information, a mutual NDA makes the obligations the same for both parties. A unilateral NDA suggests that the obligations of your agreement only apply to one party. """
+    if tag_name == "most_similar":
+        return """Check out popular templates that are most similar to this agreement. """
+    elif tag_name == "time_period_DATE":
+        return "Termination date"
+    elif tag_name == "governing_law_jurisdiction_LOCATION":
+        return "Jurisdiction"
+    elif tag_name == "recitals_ORGANIZATION":
+        return "Parties"
+    else:
+        return "<tag not found>"
+
+def get_reference_info(tag_type, tag_category):
+    """ Eventually, this should be information in a database."""
+    if tag_type == "disclosure_type":
+        if tag_category == "mutual": 
+            return """When you have to share sensitive information, a mutual NDA makes the obligations the same for both parties. """
+        else:
+            return """When you have to share sensitive information, a mutual NDA makes the obligations the same for both parties. """
+    else:
+        return "<tag not found>"
 
 def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     """ test that the class is working """
