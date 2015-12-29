@@ -416,9 +416,7 @@ class Alignment(object):
         return
 
     def build_entities_dict(self, tupleized):
-        #tags = self.schema.get_tags()
         entities = self.schema.get_entities()
-        tupled = []
         output = []
 
         import ner
@@ -429,10 +427,33 @@ class Alignment(object):
         # Let's build up a dictionary of global named entities
         globalnerz = tagger.get_entities(self.raw_content)
         for k in globalnerz.keys():
+
+            if len(globalnerz[k]) > 1:
+                globalnerz[k] = list(set(globalnerz[k]))
+                # strip out values from the NER which we know to be bad
+                for values in globalnerz[k]:
+                    if k == "ORGANIZATION":
+                        # list of strings that are gonna get stripped away
+                        discard = ["the State of California", "State of California","Third Parties", "Residual Information", "Disclosure of Confidential Information", "Disclosing Party to Receiving Party", "Confidential Information to Receiving Party","Disclosing Party", "Receiving Party","Parties", "Company", "Confidential Information", "USA"]
+                        globalnerz[k] = [x for x in globalnerz[k] if x not in discard] 
+
+                    elif k == "PERSON":
+                        pass
+                    elif k == "DATE":
+                        globalnerz[k] = [x for x in globalnerz[k] if len(str(x)) != 4] 
+
+                nerz_most_common = max(set(globalnerz[k]), key=globalnerz[k].count)
+                result = {}
+                result['type'] = k + "_most_common"
+                result['category'] = k + "_most_common"
+                result['text'] = nerz_most_common
+                result['reference-info'] = ''
+                output.append(result)
+
+            # TODO: look here for adding smart
             result = {}
             result['type'] = k
             result['category'] = k
-            # TODO: look here for adding smart
             result['text'] = globalnerz[k]
             result['reference-info'] = ''
             output.append(result)
@@ -458,7 +479,6 @@ class Alignment(object):
                         result['text'] = "List App, Inc."
                     else:
                         result['text'] = nerz[tag_values[0]][0]
-
                     output.append(result)
                 else: 
                     result['type'] = tag_name + "_" + tag_values[0]
@@ -488,8 +508,11 @@ class Alignment(object):
 
                 import re
                 duration_match = []
-                for m in re.finditer("\(?\d+\)? (years|months|days)", search_text):                
+                for m in re.finditer("\(?\d+\)? (years|months|days|year|month|day)", search_text):       
                     duration_match.append(m.group(0))
+
+                #for m in re.finditer("\(?\d+\)? (year|month|day)", search_text):
+                #    duration_match.append(m.group(0))
 
                 if duration_match:
                     result = {}
@@ -593,6 +616,7 @@ class Alignment(object):
             points += 25
         else:
             points += len(provisions_found) * (25 / len(provisions_expected))
+
 
         """
         # compare tupleized with self.schema.get_provisions()
@@ -702,8 +726,10 @@ def get_tag_text(tag_name):
         return "Jurisdiction"
     elif tag_name == "recitals_ORGANIZATION":
         return "Parties"
+    elif tag_name == "breach_MONEY":
+        return "Damages"
     else:
-        return "<tag not found>"
+        return "<" + tag_name + " not found>"
 
 def get_reference_info(tag_type, tag_category):
     """ Eventually, this should be information in a database."""

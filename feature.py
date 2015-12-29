@@ -98,10 +98,15 @@ class Feature(object):
 		might want to consider a position_flag=False
 		to ignore position for training files
 		""" 
+		import ner
+		import config
+		ner_settings = config.load_ner()
+		tagger = ner.SocketNER(host=ner_settings['hostname'], port=int(ner_settings['port']))
+
 		para_meta = []
 		index = 0
 		for paragraph in sent_toks:
-			#paragraph = " ".join(toks)
+			nerz = tagger.get_entities(paragraph)
 			stats = {}
 			stats['characters'] = len(paragraph)
 			stats['returns'] = paragraph.count("\n") #returns with few characters suggests titles or tables
@@ -123,10 +128,32 @@ class Feature(object):
 			stats['by_count'] = paragraph.count("By")
 			stats['hasPrintedName'] = "printed name" in paragraph.lower()
 			stats['hasWitnessWhereof'] = paragraph.count("IN WITNESS WHEREOF")
-			#TODO: you might want to use some NER here.  For example, containsORGANIZATION
-			# containsDATE, containsMONEY
+
+			#TODO: you might want to use some NER here.  
+			#For example, containsORGANIZATION, containsDATE, containsMONEY
+			if "MONEY" in nerz.keys():
+				stats['contains' + "MONEY"] = True
+			else: 
+				stats['contains' + "MONEY"] = False
+
+			if "ORGANIZATION" in nerz.keys():
+				stats['contains' + "ORGANIZATION"] = True
+			else: 
+				stats['contains' + "ORGANIZATION"] = False
+
+			if "LOCATION" in nerz.keys():
+				stats['contains' + "LOCATION"] = True
+			else: 
+				stats['contains' + "LOCATION"] = False
+
+			if "DATE" in nerz.keys():
+				stats['contains' + "DATE"] = True
+			else: 
+				stats['contains' + "DATE"] = False
+
 			#TODO: might want to consider incidence of cardinal numbers
 			# while using nltk.ne_chunk( looking for CD )
+
 			if position_flag:
 				stats['position_index'] = index
 				if index > 0:
@@ -145,12 +172,10 @@ class Feature(object):
 			uppercase = 0
 			word_count = 0
 			for word in words:
-
 				if word.isupper():
 					uppercase += 1
 				if len(word) > 4: ## would be nice to only count certain things as words
 					word_count = word_count + 1
-
 			stats['uppercase'] = uppercase
 			para_meta.append(stats)
 			index = index + 1
