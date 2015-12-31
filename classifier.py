@@ -8,6 +8,7 @@ import nltk
 
 BASE_PATH = "./"
 CORPUS_PATH = os.path.join(BASE_PATH, "data/")
+DUMP_PATH = os.path.join(BASE_PATH, "dump/")
 
 class AgreementVectorClassifier(object):
 	""" """
@@ -184,6 +185,63 @@ def get_agreement_classifier_v3(train_corpus):
 	naiveClass = AgreementNaiveBayesClassifier(train_corpus)
 	naiveClass.fit()
 	return naiveClass
+
+def get_text_from_file(filename, output):
+	import config
+	tika = config.load_tika()
+	tika_url = "http://" + tika['hostname'] + ":" + tika['port'] + "/tika"
+
+	import requests
+	contract_data = ""
+	if (".pdf" in filename):					
+		print("filename: %s" % filename)
+		r=requests.put(tika_url, data=output, headers={"Content-type" : "application/pdf", "Accept" : "text/plain"})
+		contract_data = r.text.encode("ascii", "replace")
+		contract_data = contract_data.replace("?", " ")
+
+	elif (".docx" in filename):
+		print("filename: %s" % filename)
+		r=requests.put(tika_url, data=output, headers={"Content-type" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Accept" : "text/plain"})
+		contract_data = r.text.encode("ascii", "replace")
+		contract_data = contract_data.replace("?", " ")
+
+	elif (".doc" in filename):
+		print("filename: %s" % filename)
+		r=requests.put(tika_url, data=output, headers={"Content-type" : "application/msword", "Accept" : "text/plain"})
+		contract_data = r.text.encode("ascii", "replace")
+		contract_data = contract_data.replace("?", " ")
+
+	elif (".rtf" in filename):
+		print("filename: %s" % filename)
+		r=requests.put(tika_url, data=output, headers={"Content-type" : "application/rtf", "Accept" : "text/plain"})
+		contract_data = r.text.encode("ascii", "replace")
+		contract_data = contract_data.replace("?", " ")
+
+	else: # (".txt" in filename): 
+		#print("not necessary to transform files that are already txt.")
+		pass
+
+	return contract_data
+
+def transform_to_text():
+	for filename in os.listdir(CORPUS_PATH):
+		
+		with open(os.path.join(CORPUS_PATH, filename),'rb') as _file:
+			output = _file.read()
+		
+		contract_data = get_text_from_file(filename, output)
+		if contract_data:
+			print("processing %s" % filename)
+			newname = filename.replace(".pdf", ".txt")
+			f = open(os.path.join(CORPUS_PATH, newname), "w")
+			f.write(contract_data)
+			f.close()
+			print("created a new file, %s" % newname)
+
+			import shutil
+			shutil.move(os.path.join(CORPUS_PATH, filename), os.path.join(DUMP_PATH, filename))
+			print("removed the original file")
+	print("transformations completed.")
 
 def testing():
 	"""
