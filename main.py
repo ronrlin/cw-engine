@@ -153,6 +153,10 @@ def handle_contract(contract_id=None):
 		paras = aligner.simplify(paras)
 		aligned_provisions = aligner.align(paras, version=2)
 		detail = aligner.get_detail(aligned_provisions, redline=False)
+
+		with open('log.txt', 'w') as outfile:
+			json.dump(detail, outfile, indent=4, sort_keys=True)
+
 		# Create the JSON response to the browser
 		return json.dumps(detail)
 
