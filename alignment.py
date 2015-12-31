@@ -378,8 +378,8 @@ class Alignment(object):
                 # consider trying consensus
                 # consider redlining only the "required provisions"
                 reqs = [filename for (prov, filename) in self.schema.get_provisions()]
-                print("reqs for comp to %s" % _type)
-                print(reqs)
+                # print("reqs for comp to %s" % _type)
+                # print(reqs)
                 if (redline and _type in reqs) and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
                     import config
                     print("static mode status is %s" % str(config.is_static_mode()))
@@ -440,15 +440,21 @@ class Alignment(object):
                     elif k == "PERSON":
                         pass
                     elif k == "DATE":
-                        globalnerz[k] = [x for x in globalnerz[k] if len(str(x)) != 4] 
+                        try: 
+                            globalnerz[k] = [x for x in globalnerz[k] if len(str(x)) != 4] 
+                        except UnicodeEncodeError:
+                            print("gracefully handle error: %s" % globalnerz[k])
 
-                nerz_most_common = max(set(globalnerz[k]), key=globalnerz[k].count)
-                result = {}
-                result['type'] = k + "_most_common"
-                result['category'] = k + "_most_common"
-                result['text'] = nerz_most_common
-                result['reference-info'] = ''
-                output.append(result)
+                if globalnerz[k]:
+                    nerz_most_common = max(set(globalnerz[k]), key=globalnerz[k].count)
+                    result = {}
+                    result['type'] = k + "_most_common"
+                    result['category'] = k + "_most_common"
+                    result['text'] = nerz_most_common
+                    result['reference-info'] = ''
+                    output.append(result)
+                #else:
+                #    del globalnerz[k]
 
             # TODO: look here for adding smart
             result = {}
@@ -485,7 +491,12 @@ class Alignment(object):
                     result['category'] = get_tag_text(tag_name + "_" + tag_values[0])
                     result['reference-info'] = '' #some id into a reference db
                     if tag_values[0] in globalnerz.keys():
-                        result['text'] = globalnerz[tag_values[0]][0]
+                        if globalnerz[tag_values[0]]:
+                            result['text'] = globalnerz[tag_values[0]][0]
+                        else: 
+                            print("=================")
+                            print("possible error!!")
+                            print(globalnerz[tag_values[0]])
                     else:
                         result['text'] = "None"
                     output.append(result)
@@ -496,6 +507,7 @@ class Alignment(object):
                 tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
                 if tagged_sentences:
                     cardinalnum = [word for sent in tagged_sentences for (word, pos) in sent if pos == "CD"]
+                    cardinalnum = [x for x in cardinalnum if x not in ["(", ")"]]
                     if cardinalnum:
                         print("cardinal numbers found")
                         print(cardinalnum)
@@ -621,12 +633,12 @@ class Alignment(object):
         """
         # compare tupleized with self.schema.get_provisions()
         # calculate similarity with a standard
-
         score = ((1 - doc_complexity/group_complexity) + (doc_similarity/group_similarity))/2 * 100
         return round(score, 1)
 
     def calc_provisionstats(self, tupleized):
         from statistics import AgreementStatistics
+        import provision
 
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
@@ -655,15 +667,22 @@ class Alignment(object):
                 prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
                 prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
                 prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
+                if round(prov_complexity_avg, 1) < 1.0  or round(prov_similarity_avg, 1) < 1.0:
+                    print("complexity_avg: %s" % prov_complexity_avg)
+                    print("similarity_avg: %s" % prov_similarity_avg)
+                    print("error on provision_name %s!" % provision_name)
+                    print(provision_group_info)
+
                 provisionstats[provision_name] = {
                     'provision-readable' : provision_name,
+                    'provision-description' : provision.get_description(provision_mach_name),
                     'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
                     "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
                     "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
                     "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
                     "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
                     "prov-simplicity-score" : 100 - astats.calculate_complexity(_block), # computed on the fly
-                    "prov-simplicity-avg" : 100 - round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
+                    "prov-simplicity-avg" : round(100.0 - provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
                     "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
                     #"provision-tag" : "some-label", # computed on the fly
                 }
