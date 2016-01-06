@@ -29,6 +29,8 @@ class Feature(object):
 			"signature_line" : "features/feature_signature_line", 
 			"title_paragraph" : "features/feature_title_paragraph",
 			"normal_text" : "features/feature_normal_text",
+			"preamble" : "features/feature_preamble",
+			"recital" : "features/feature_recital",
 		}
 
 		import time
@@ -51,12 +53,6 @@ class Feature(object):
 			doc = self.blank_tokenize(alltext)
 			stats = self.calc_stats(doc)
 			tagged_sents += zip([fileid] * len(doc), doc)
-			# there may be a way to append the location of provisions
-			# if fileid == "train_title":
-			# 		[ stats stats stats ]
-			# 		for s in stats:  
-			#			s['paragraph_position'] = titlelist.pop()
-			#		stats = [s['paragraph_position'] = t.pop() for s in stats]
 			sents_stats += zip([fileid] * len(doc), stats)
 
 		end_time = time.time()
@@ -128,6 +124,10 @@ class Feature(object):
 			stats['by_count'] = paragraph.count("By")
 			stats['hasPrintedName'] = "printed name" in paragraph.lower()
 			stats['hasWitnessWhereof'] = paragraph.count("IN WITNESS WHEREOF")
+			stats['hasWhereas'] = "whereas" in paragraph.lower()
+			stats['hasWhereasCaps'] = "WHEREAS" in paragraph
+			stats['hasEffectiveDate'] = "effective date" in paragraph.lower()
+			stats['defineEffectiveDate'] = "\"Effective Date\"" in paragraph
 
 			#TODO: you might want to use some NER here.  
 			#For example, containsORGANIZATION, containsDATE, containsMONEY
