@@ -128,6 +128,8 @@ def get_description(provision_name):
 		return "This clause declares a contract to be the complete and final agreement between the parties. It is often placed at or towards the end of the contract.  A contract that has such a clause may be deemed an integrated contract, and any previous negotiations in which the parties to the contract had considered different terms will be deemed superseded by the final writing. The existence of such a term is normally not conclusive proof that no varied or additional conditions exist with respect to the performance of the contract beyond those that are in the writing but instead is simply evidence of that fact."
 	elif provision_name == "relationship":
 		return "The Relationship of the Parties or No Partnership clause stipulates that the parties do not have any partnership or agency relationship. This means that the agreement does not give a party the authority to obligate the other. The clause appears in many types of agreement, generally in the General Provisions section."
+	elif provision_name == "governing_law_jurisdiction":
+		return "This clause specifies the location where the laws of a mutually agreed upon jurisdiction will govern the interpretation and enforcement of the terms of the contract."
 	else:
 		return "No description available at this time."
 
