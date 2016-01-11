@@ -107,11 +107,15 @@ def create_system():
 def get_description(provision_name):
 
 	if provision_name == "confidential_information":
-		return "The Confidential Information clause defines what the parties deem to be proprietary and protected by the terms of the agreement. The clause typically defines what is, and what is not, confidential. Analysis shows that the definition of the excluded items is very consistent, while the definition of the information covered by the provisions is highly variable."
+		return "The Confidential Information clause defines what the parties deem to be proprietary and protected by the terms of the agreement. The clause typically defines what is confidential."
+	if provision_name == "nonconfidential_information":
+		return "This provision specifies what might be explicitly excluded from from being considered protected information."
 	elif provision_name == "no_future_obligation":
 		return "This provision states that neither party has any obligation under this agreement to purchase from or provide to the other party any products or services, or to enter into any other agreement."
 	elif provision_name == "ownership_of_information":
 		return "This provision usually specifies that all proprietary rights are retained by the disclosing party and that the disclosure of information does not convey any right or license to use the information other than for the stated purpose. In some cases, an agreement might be specific about what information or classes of information would fall under these rights. This acknowledgement states that all intellectual property rights in and to any Confidential Information that is disclosed to it are and will remain the disclosing partys exclusive property."
+	elif provision_name == "obligation_of_receiving_party":
+		return "This provision is telling you that the receiving party is promising to do something in connection with executing this agreement."
 	elif provision_name == "breach":
 		return "This provision specifies the terms or conditions under which it would be understood that the agreement is being violated.  In some cases, parties might also specify what damages or claims would be made in the event of a breach. "
 	elif provision_name == "indemnification":
@@ -119,13 +123,13 @@ def get_description(provision_name):
 	elif provision_name == "time_period":
 		return "This provision defines the period of time during which the parties must keep information confidential. The clause may provide for a fixed or undefined term; others may impose obligations of confidential until such time as the information becomes public. The clause must be read in conjunction with the termination provision."
 	elif provision_name == "representations_and_warranties":
-		return "The Warranty clause states that the parties make no guarantees to the accuracy or completeness of any confidential information."
+		return "This clause states that the parties make no guarantees to the accuracy or completeness of any confidential information."
 	elif provision_name == "severability":
 		return "The Severability clause states that the terms of the contract are independent of each another, so that if a term in the contract is deemed unenforceable by a court, the contract as a whole will not be deemed unenforceable. The severability clause is frequently one of the most variable (or inconsistent) clauses in an agreement as lawyers creatively attempt to maximize the scope of restrictive covenants."
 	elif provision_name == "waiver":
-		return "The Waiver or No Waiver clause in the general provisions section of an agreement aims to ensure that a partys failure to enforce its contractual rights, whether intentionally or by oversight, does not result in a waiver of those rights or remedies for their breach. A party may decide not to strictly enforce the provisions of the contract on a particular occasion or under certain circumstances. It might, for example, accept late payments without insisting on an agreed-upon penalty, or allow the other party to send goods of a different quality on occasion. The no waiver clause provides that a party does not waive its rights to insist upon strict compliance with terms of the contract in the future simply because it has deviated from the enforcement of those terms in the past. "
+		return "The Waiver (or No Waiver) clause ensures that a party's failure to enforce its contractual rights, whether intentionally or by oversight, does not result in a waiver of those rights or remedies for their breach. A party may decide not to strictly enforce the provisions of the contract on a particular occasion or under certain circumstances. It might, for example, accept late payments without insisting on an agreed-upon penalty. This clause says that a party does not waive its rights, even if they don't insist on strict compliance with terms of the contract in the past. "
 	elif provision_name == "integration":
-		return "This clause declares a contract to be the complete and final agreement between the parties. It is often placed at or towards the end of the contract.  A contract that has such a clause may be deemed an integrated contract, and any previous negotiations in which the parties to the contract had considered different terms will be deemed superseded by the final writing. The existence of such a term is normally not conclusive proof that no varied or additional conditions exist with respect to the performance of the contract beyond those that are in the writing but instead is simply evidence of that fact."
+		return "This clause declares a contract to be the complete and final agreement between the parties. A contract that has such a clause may be deemed an integrated contract, and any previous negotiations in which the parties to the contract had considered different terms will be deemed superseded by the final writing. The existence of such a term is normally not conclusive proof that no varied or additional conditions exist with respect to the performance of the contract beyond those that are in the writing but instead is simply evidence of that fact."
 	elif provision_name == "relationship":
 		return "The Relationship of the Parties or No Partnership clause stipulates that the parties do not have any partnership or agency relationship. This means that the agreement does not give a party the authority to obligate the other. The clause appears in many types of agreement, generally in the General Provisions section."
 	elif provision_name == "governing_law_jurisdiction":
