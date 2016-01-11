@@ -478,7 +478,7 @@ class Alignment(object):
             result['category'] = k
             result['text'] = globalnerz[k]
             result['reference-info'] = ''
-            output.append(result)
+            #output.append(result)
 
         #somehow check the length? 
         for tag in entities:
