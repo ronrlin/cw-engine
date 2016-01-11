@@ -57,6 +57,9 @@ agreements = [
 
 """
 
+import os
+CURATED_PATH = os.path.join("./", "parsed/")
+
 def create_universe():
    """ Create all databases """
    create_db()
@@ -70,7 +73,8 @@ def create_universe():
    s.compute_contract_group_info()
    s.compute_provision_group_info()
    load_meta_info() #I'm not sure why this is necessary, but it is... NEED TO DEBUG why this is overwritten
- 
+
+   #TODO: curated_db stuff here!!!!  
 
 def clear_db():
    """ Empty the database """
@@ -152,6 +156,32 @@ def create_provision_group_db():
    print("completed the 'provision_group' db.")
    client.close()
 
+def create_curated_db_from_dict():
+   """ This function loads all the files in parsed/ directory to a curated db. 
+
+      Relies on creating a parsed/ directory in the web root and providing a bunch 
+      of json formatted text files. These get loaded into Mongo.
+   """
+   import config
+   mongo = config.load_mongo()
+   client = MongoClient(mongo['hostname'], mongo['port'])      
+   db = client[mongo['db_name']]
+   print("loading the curated provision database...")
+   for filename in os.listdir(CURATED_PATH):
+      with open(os.path.join(CURATED_PATH, filename),'rb') as json_data:
+         my_data = json.load(json_data)
+      result = db['curated'].insert_many(my_data)
+   print("curated db is completed!")
+
+def clear_curated_db():
+   """ Empty the provision_group_info collection """
+   import config
+   mongo = config.load_mongo()
+   #client = MongoClient('localhost', 27017)
+   client = MongoClient(mongo['hostname'], mongo['port'])
+   client[mongo['db_name']].drop_collection('curated')
+   print("drop 'curated' collection...")
+   client.close()
 
 def clear_provision_group_db():
    """ Empty the provision_group_info collection """
@@ -261,6 +291,8 @@ def load_meta_info():
    datastore.tag_classified(str(info['_id']), tag_uni)
    info = datastore.fetch_by_filename('nda-0000-0058.txt')
    datastore.tag_classified(str(info['_id']), tag_uni)
+   info = datastore.fetch_by_filename('nda-0000-0048.txt')
+   datastore.tag_classified(str(info['_id']), tag_uni)
 
    print("loaded the meta data about nondisclosures.")
 
@@ -332,6 +364,20 @@ class WiserDatabase(object):
       self.contract_group = self.db['contract_group']
       # provision_group holds information about groups of agreements, like all ndas
       self.provision_group = self.db['provision_group']
+      # curated is a scrubbed provision_db, containing data about provisions
+      self.curated = self.db['curated']
+
+   def fetch_curated(self, feature_class="features/feature_normal_text"):
+      """ Returns list of dict corresponding to a feature_class type. """
+      return self.curated.find({'feature_class' : feature_class}, { '_id' : 0 })#.limit(50)
+
+   def fetch_feature_class_types(self):
+      """ Returns all possible feature types in the curated db. """ 
+      return self.curated.distinct('feature_class')
+
+   def fetch_provision_type(self, provision_type):
+      """ Returns all possible feature types in the curated db. """ 
+      return self.curated.find({'first_guess' : provision_type}, { '_id' : 0 })
 
    def fetch_by_filename(self, filename):
       """ Returns records (key/value pairs) corresponding to records with a certain value
