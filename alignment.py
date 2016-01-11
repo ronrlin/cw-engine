@@ -158,6 +158,7 @@ class Alignment(object):
                     runAgain = True
         return paras
 
+    # TODO: REMOVE VERSION from aligncore  --- it just uses a diff't tokenization scheme. use blankline tokenizer
     def aligncore(self, content, version=1):
         tupleized = []
         if version == 1:
@@ -216,6 +217,9 @@ class Alignment(object):
         self.build_entities_dict(tupleized)
 
         feature = Feature()
+        feature.load_trainers()
+        # feature.load_dict()
+
         # TODO: you should pass tupleized into text_identify
         self.provision_features = feature.text_identify(content)
         # Build a concepts dictionary that will be used in get_markup
@@ -236,15 +240,22 @@ class Alignment(object):
         new_tupleized = []
         for i, (provision, _type) in enumerate(tupleized):
             feature_type = provision_features[i][1]
-            self.provisionstats[_type]
+            #self.provisionstats[_type]
             if ("title_paragraph" in feature_type): 
-                new_tupleized.append((provision, "")) #consider renaming to recitals
+                new_tupleized.append((provision, ""))
             elif ("signature_line" in feature_type):
                 new_tupleized.append((provision, ""))
             elif ("definitions" in feature_type):
                 new_tupleized.append((provision, _type))
             elif ("normal_text" in feature_type):
                 new_tupleized.append((provision, _type))
+            elif ("preamble" in feature_type):
+                new_tupleized.append((provision, _type))
+            elif ("recital" in feature_type):
+                #if "recital" in _type:
+                new_tupleized.append((provision, _type))
+                #else:
+                #    new_tupleized.append((provision, _type))
             else:
                 new_tupleized.append((provision, _type))
         return new_tupleized
@@ -344,8 +355,6 @@ class Alignment(object):
         if redline: 
             print("Look for redlines.")
             print(thresholds)
-        else: 
-            print("Not looking for redlines.")
 
         _markup_list = []
         concept_provs = self.concept_dict.keys()
@@ -366,31 +375,36 @@ class Alignment(object):
                 # I could calculate stats here.
                 # TODO: need to build a condition to decide whether to redline a paragraph
                 provision_name = get_provision_name_from_file(_type, dashed=True)
-                sim_score = provisionstats[provision_name]["prov-similarity-score"]
-                sim_avg = provisionstats[provision_name]["prov-similarity-avg"]
-                comp_score = provisionstats[provision_name]["prov-complexity-score"]
-                comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
-                cw_score = provisionstats[provision_name]["contractwiser-score"]
-                consensus_score = provisionstats[provision_name]["consensus-percentage"]
-                print("similarity: %s and complexity: %s and consensus %s" % (sim_score, comp_score, consensus_score))
+                if provision_name in provisionstats.keys():
+                    sim_score = provisionstats[provision_name]["prov-similarity-score"]
+                    sim_avg = provisionstats[provision_name]["prov-similarity-avg"]
+                    comp_score = provisionstats[provision_name]["prov-complexity-score"]
+                    comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
+                    cw_score = provisionstats[provision_name]["contractwiser-score"]
+                    consensus_score = provisionstats[provision_name]["consensus-percentage"]
 
-                # consider a utility function here
-                # consider trying consensus
-                # consider redlining only the "required provisions"
-                reqs = [filename for (prov, filename) in self.schema.get_provisions()]
-                # print("reqs for comp to %s" % _type)
-                # print(reqs)
-                if (redline and _type in reqs) and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
-                    import config
-                    print("static mode status is %s" % str(config.is_static_mode()))
-                    print("do a redline for %s provision" % _type)
-                    if config.is_static_mode():
-                       text = self.get_alt_text(_type, text, inc[_type])
+                    #print("similarity: %s and complexity: %s and consensus %s" % (sim_score, comp_score, consensus_score))
+                    # consider a utility function here
+                    # consider trying consensus
+                    # consider redlining only the "required provisions"
+                    reqs = [filename for (prov, filename) in self.schema.get_provisions()]
+                    # print("reqs for comp to %s" % _type)
+                    # print(reqs)
+                    if (redline and _type in reqs) and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
+                        import config
+                        print("static mode status is %s" % str(config.is_static_mode()))
+                        print("do a redline for %s provision" % _type)
+                        if config.is_static_mode():
+                           text = self.get_alt_text(_type, text, inc[_type])
+                        else:
+                           text = self.get_new_alt_text(_type, text, inc[_type])
+
                     else:
-                       text = self.get_new_alt_text(_type, text, inc[_type])
+                        #print("no need to redline %s provision" % _type)
+                        text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
+                        text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
-                else:
-                    print("no need to redline %s provision" % _type)
+                else: 
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
                     text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
@@ -434,16 +448,18 @@ class Alignment(object):
                 for values in globalnerz[k]:
                     if k == "ORGANIZATION":
                         # list of strings that are gonna get stripped away
-                        discard = ["the State of California", "State of California","Third Parties", "Residual Information", "Disclosure of Confidential Information", "Disclosing Party to Receiving Party", "Confidential Information to Receiving Party","Disclosing Party", "Receiving Party","Parties", "Company", "Confidential Information", "USA"]
+                        discard = ["the State of California", "State of California","Third Parties", "Residual Information", "Disclosure of Confidential Information", "Disclosing Party to Receiving Party", "Confidential Information to Receiving Party","Disclosing Party", "Receiving Party","Parties", "Company", "Confidential Information", "USA", "Discloser's Confidential Information"]
                         globalnerz[k] = [x for x in globalnerz[k] if x not in discard] 
 
                     elif k == "PERSON":
                         pass
                     elif k == "DATE":
                         try: 
+                            import datetime
                             globalnerz[k] = [x for x in globalnerz[k] if len(str(x)) != 4] 
+
                         except UnicodeEncodeError:
-                            print("gracefully handle error: %s" % globalnerz[k])
+                            print("gracefully handle error: %s" % globalnerz[k])                        
 
                 if globalnerz[k]:
                     nerz_most_common = max(set(globalnerz[k]), key=globalnerz[k].count)
@@ -452,7 +468,7 @@ class Alignment(object):
                     result['category'] = k + "_most_common"
                     result['text'] = nerz_most_common
                     result['reference-info'] = ''
-                    output.append(result)
+                    #output.append(result)
                 #else:
                 #    del globalnerz[k]
 
@@ -470,73 +486,53 @@ class Alignment(object):
             tag_name = tag[0]
             tag_values = tag[1].split(",") # list of all possible values
 
-            if len(tag_values) == 1:
-                # only look for things in _blocks of the same provision _type
-                print("searching in %s" % tag_name)
-                search_text = [_block for (_block, _type) in tupleized if tag_name in _type]
-                search_text = " ".join(search_text)
-                nerz = tagger.get_entities(search_text)
-                result = {}
-                if (nerz.get(tag_values[0]) != None):
-                    result['type'] = tag_name + "_" + tag_values[0]
-                    result['category'] = get_tag_text(tag_name + "_" + tag_values[0])
-                    result['reference-info'] = '' #some id into a reference db
-                    if nerz[tag_values[0]][0] == "App Inc.":
-                        result['text'] = "List App, Inc."
-                    else:
-                        result['text'] = nerz[tag_values[0]][0]
-                    output.append(result)
-                else: 
-                    result['type'] = tag_name + "_" + tag_values[0]
-                    result['category'] = get_tag_text(tag_name + "_" + tag_values[0])
-                    result['reference-info'] = '' #some id into a reference db
-                    if tag_values[0] in globalnerz.keys():
-                        if globalnerz[tag_values[0]]:
-                            result['text'] = globalnerz[tag_values[0]][0]
-                        else: 
-                            print("=================")
-                            print("possible error!!")
-                            print(globalnerz[tag_values[0]])
-                    else:
-                        result['text'] = "None"
-                    output.append(result)
+            search_text = [_block for (_block, _type) in tupleized if tag_name in _type]
+            search_text = " ".join(search_text)
+            nerz = tagger.get_entities(search_text)
 
-                import nltk 
-                sentences = nltk.sent_tokenize(search_text)
-                tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
-                tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
-                if tagged_sentences:
-                    cardinalnum = [word for sent in tagged_sentences for (word, pos) in sent if pos == "CD"]
-                    cardinalnum = [x for x in cardinalnum if x not in ["(", ")"]]
-                    if cardinalnum:
-                        print("cardinal numbers found")
-                        print(cardinalnum)
-                        result = {}
-                        result['type'] = tag_name + "_cardinal_number"
-                        result['category'] = tag_name + "_cardinal_number"
-                        result['reference-info'] = '' #some id into a reference db
-                        result['text'] = cardinalnum
-                        output.append(result)
-
-                import re
-                duration_match = []
-                for m in re.finditer("\(?\d+\)? (years|months|days|year|month|day)", search_text):       
-                    duration_match.append(m.group(0))
-
-                #for m in re.finditer("\(?\d+\)? (year|month|day)", search_text):
-                #    duration_match.append(m.group(0))
-
-                if duration_match:
+            for entity_type in tag_values:
+                if (nerz.get(entity_type) != None):
                     result = {}
-                    result['type'] = tag_name + "_duration"
-                    result['category'] = tag_name + "_duration"
+                    result['type'] = tag_name + "_" + entity_type
+                    result['category'] = get_tag_text(tag_name + "_" + entity_type)
                     result['reference-info'] = '' #some id into a reference db
-                    result['text'] = duration_match
+                    result['text'] = nerz[entity_type]
                     output.append(result)
+
+            import nltk 
+            sentences = nltk.sent_tokenize(search_text)
+            tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
+            tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
+            if tagged_sentences:
+                cardinalnum = [word for sent in tagged_sentences for (word, pos) in sent if pos == "CD"]
+                cardinalnum = [x for x in cardinalnum if x not in ["(", ")"]]
+                if cardinalnum:
+                    result = {}
+                    result['type'] = tag_name + "_cardinal_number"
+                    result['category'] = tag_name + "_cardinal_number"
+                    result['reference-info'] = '' #some id into a reference db
+                    result['text'] = cardinalnum
+                    output.append(result)
+
+            import re
+            duration_match = []
+            for m in re.finditer("\(?\d+\)? (years|months|days|year|month|day)", search_text):       
+                duration_match.append(m.group(0))
+
+            if duration_match:
+                result = {}
+                result['type'] = tag_name + "_duration"
+                result['category'] = tag_name + "_duration"
+                result['reference-info'] = '' #some id into a reference db
+                result['text'] = duration_match
+                output.append(result)
 
         self.entity_dict = output
-        print(self.entity_dict)
         return         
+
+    def sanitize_entity_dict(self):
+        possible_keys = {"DATE", "ORGANIZATION", "PERSON", "LOCATION", "MONEY", "PERCENT", "TIME"}
+        return
 
     def build_tag_dict(self, tupleized):
         tags = self.schema.get_tags()
@@ -612,23 +608,30 @@ class Alignment(object):
         # search entity_dict for time_period_DATE
         term = [entity for entity in self.entity_dict if entity['type'] == 'time_period_DATE']
         if term[0]['text']:
-            points += 10
+            points += 11
 
         # search tag_dict for disclosure_type
         disclosure_type = [tag for tag in self.tag_dict if tag['type'] = 'disclosure_type']
         if disclosure_type[0]['text'] == 'mutual':
-            points += 10
+            points += 15
         else:
             points += 5
 
+        # check for missing provisions
         provisions_found = set([_type for (_block, _type) in tupleized])
         provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
         missing = set(provisions_expected) - set(provisions_found)
         if not missing: 
-            points += 25
+            points += 20
         else:
-            points += len(provisions_found) * (25 / len(provisions_expected))
+            points += len(provisions_found) * (20 / len(provisions_expected))
 
+        # check for confidential information
+        points += 11
+
+
+        complexity_contrib = 20
+        similarity_contrib = 20
 
         """
         # compare tupleized with self.schema.get_provisions()
@@ -667,12 +670,6 @@ class Alignment(object):
                 prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
                 prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
                 prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
-                if round(prov_complexity_avg, 1) < 1.0  or round(prov_similarity_avg, 1) < 1.0:
-                    print("complexity_avg: %s" % prov_complexity_avg)
-                    print("similarity_avg: %s" % prov_similarity_avg)
-                    print("error on provision_name %s!" % provision_name)
-                    print(provision_group_info)
-
                 provisionstats[provision_name] = {
                     'provision-readable' : provision_name,
                     'provision-description' : provision.get_description(provision_mach_name),
@@ -712,6 +709,13 @@ class Alignment(object):
         newtag["reference-info"] = ""
         self.tag_dict.append(newtag)
 
+        confidential_info = [_block for (_block, _type) in tupleized if "confidential_information" in _type]
+        time_period = [_block for (_block, _type) in tupleized if "time_period" in _type]
+
+        provisions_found = set([_type.replace("train/train_","") for (_block, _type) in tupleized])
+        provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
+        missing = list(set(provisions_expected) - set(provisions_found))
+
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
@@ -727,10 +731,16 @@ class Alignment(object):
             'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.tag_dict,
             'entities' : self.entity_dict,
+            'summary' : { 
+                "confidential-info" : confidential_info,
+                "time-period" : time_period,
+                "missing-provisions" : missing,
+            }, 
         }
 
         document['provisions'] = provisionstats
-        document['concepts'] = self.get_concept_detail()
+        #document['concepts'] = self.get_concept_detail()
+        document['concepts'] = {}
         return document
 
 def get_tag_text(tag_name):
@@ -739,12 +749,16 @@ def get_tag_text(tag_name):
         return """When you have to share sensitive information, a mutual NDA makes the obligations the same for both parties. A unilateral NDA suggests that the obligations of your agreement only apply to one party. """
     if tag_name == "most_similar":
         return """Check out popular templates that are most similar to this agreement. """
+    elif tag_name == "preamble_DATE":
+        return "Effective date"
+    elif tag_name == "preamble_ORGANIZATION":
+        return "Parties"
+    elif tag_name == "time_period_duration":
+        return "Agreement Term"
     elif tag_name == "time_period_DATE":
         return "Termination date"
     elif tag_name == "governing_law_jurisdiction_LOCATION":
         return "Jurisdiction"
-    elif tag_name == "recitals_ORGANIZATION":
-        return "Parties"
     elif tag_name == "breach_MONEY":
         return "Damages"
     else:
@@ -778,7 +792,8 @@ def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     result = a.align(toks)
     print("check on the markup")
     document = a.get_detail(result, redline=True)
-    print(document['mainDoc'])
+    import json
+    print(json.dumps(document, sort_keys=True))
 
     """ example of some simple chunking """ 
     #for sent in testset: 
@@ -787,7 +802,7 @@ def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     #            print(chunk.label(), ' '.join(c[0] for c in chunk.leaves()))
 
 def testr():
-    filename = "nda-0000-0034.txt"
+    filename = "nda-0000-0011.txt"
     print("obtain a corpus...")
     from classifier import build_corpus
     corpus = build_corpus()
@@ -795,14 +810,25 @@ def testr():
     schema = AgreementSchema()
     schema.load_schema('nondisclosure')
     #from Alignment import alignment
-    aligner = Alignment(schema=schema, vectorizer=2, all=False)
     doc = corpus.raw(filename)
+    aligner = Alignment(schema=schema, vectorizer=2, all=True)
     paras = aligner.tokenize(doc)
-    aligned_provisions = aligner.align(paras) # aligned_provisions is a list of tuples
-    print("aligned provisions")
-    print(aligned_provisions)
-    print("what features we found")
-    print([f[1] for f in aligner.provision_features])
+    paras = aligner.simplify(paras)
+    aligned_provisions = aligner.align(paras, version=2)
+    f = Feature()
+    f.load_dict()
+    print(f.dict_identify(aligned_provisions))
+
+    #f2 = Feature()
+    # f2.load_dict(class_id=True)
+    # aligned_provisions --> 
+    # f2.quality_check(aligned_provisions, feature_provisions)
+    #f2.dict_identify(aligned_provisions)
+
+    #dict = f2.build_dict(aligned_provisions, type="provision")
+    #new_aligned = f2.quality_check(aligned_provisions, dict)
+
+
 
 def comp():
     print("obtain a corpus...")
