@@ -186,6 +186,122 @@ def get_agreement_classifier_v3(train_corpus):
 	naiveClass.fit()
 	return naiveClass
 
+#maybe move these to a curate.py
+def scroll_through():
+	from helper import WiserDatabase
+	from alignment import Alignment
+	from structure import AgreementSchema
+
+	datastore = WiserDatabase()
+	records = datastore.fetch_by_category("nondisclosure")
+	cnt = 0
+	schema = AgreementSchema()
+	schema.load_schema("nondisclosure")
+	aligner = Alignment(schema=schema, vectorizer=2, all=True)
+
+	for record in records: 
+		print(record['filename'])
+		func(aligner, record['filename'])
+		if cnt > 7:
+			return
+		cnt = cnt + 1
+
+#maybe move these to a curate.py
+# pre-curation functions
+def func(aligner, filename="nda-0000-0008.txt"):
+	import json
+	import ner
+	import config
+	from feature import Feature
+	import nltk
+
+	ner_settings = config.load_ner()
+	tagger = ner.SocketNER(host=ner_settings['hostname'], port=int(ner_settings['port']))
+
+	print("Loading the agreement corpus...")
+	corpus = build_corpus(binary=False)
+	print("Loading the agreement classifier...")
+	#classifier = get_agreement_classifier_v1(corpus)
+	print("Application ready to load.")
+
+	doc = corpus.raw(filename)
+
+	#aligner = Alignment(schema=schema, vectorizer=2, all=True)
+	paras = aligner.tokenize(doc)
+	paras = aligner.simplify(paras)
+	aligned_provisions = aligner.align(paras, version=2)
+
+	feature = Feature()
+	provision_features = feature.text_identify(paras)
+
+	"""
+	{
+		filename : "",
+		document_class : "nondisclosure"
+		bag_of_words,
+		first_guess : "time_period",
+		feature_class : "normal_text",
+		paragraph_index : 3,
+		relative_paragraph_index : 3 / paragraph_count,
+		prev_guess : "severability",
+		next_guess : "severability",
+		prev_actual : "severability",
+		next_actual : "severability",
+		containsDATE : true,
+		containsMONEY : false,
+		containsORGANIZATION : true,
+		containsPERSON : true,
+		paragraph_complexity : 45.2,
+		paragraph_similarity : 49.0,
+
+		confirm_class : "severability",
+	}
+	"""
+	pidx = 0
+	provision_count = len(aligned_provisions)
+	allinfo = []
+	for proviso in aligned_provisions:
+		print(proviso)
+		property_dict = dict()
+		property_dict['filename'] = filename
+		property_dict['document_class'] = "nondisclosure"
+		property_dict['first_guess'] = proviso[1]
+		property_dict['paragraph_index'] = pidx
+		property_dict['relative_paragraph_index'] = round(float(100) * (float(pidx) / provision_count), 2)
+		property_dict['feature_class'] = provision_features[pidx][1]
+		property_dict['character_count'] = len(proviso[0])
+		property_dict['text'] = proviso[0]
+
+		words = nltk.tokenize.word_tokenize(proviso[0])
+		property_dict['word_count'] = len(words)
+
+		nerz = tagger.get_entities(proviso[0])
+		types = ["DATE", "ORGANIZATION", "PERSON", "LOCATION","MONEY", "PERCENT", "TIME"]
+		missing = set(types) - set(nerz.keys())
+		for k in missing:
+			property_dict["contains" + k] = False
+
+		for k in nerz.keys():
+			if nerz[k]:
+				property_dict["contains" + k] = True
+
+		if pidx > 0 and pidx < provision_count-1:
+			property_dict['next_guess'] = aligned_provisions[pidx+1][1]
+			property_dict['prev_guess'] = aligned_provisions[pidx-1][1]
+		else:
+			if pidx == 0:
+				property_dict['next_guess'] = aligned_provisions[pidx+1][1]
+				property_dict['prev_guess'] = None
+			elif pidx == provision_count-1:
+				property_dict['next_guess'] = None
+				property_dict['prev_guess'] = aligned_provisions[pidx-1][1]
+
+		allinfo.append(property_dict)
+		pidx += 1
+
+	with open("parsed-" + filename, 'w') as outfile:
+		json.dump(allinfo, outfile, indent=4, sort_keys=True)
+
 def get_text_from_file(filename, output):
 	import config
 	tika = config.load_tika()
@@ -223,7 +339,18 @@ def get_text_from_file(filename, output):
 
 	return contract_data
 
+# BOOTSTRAP function
 def transform_to_text():
+	""" Iterates through all files in the CORPUS PATH, creates a TXT file for any file type other than a TXT file. 
+		Once a file has been created, it moves the original file to the DUMP directory
+
+		How to add files to the corpus:
+		1. Add a file into the data/ path
+		2. Add a record into the master-classifier.csv
+		3. Run python:
+			>> import classifier
+			>> classifier.transform_to_text()
+	"""
 	for filename in os.listdir(CORPUS_PATH):
 		
 		with open(os.path.join(CORPUS_PATH, filename),'rb') as _file:
