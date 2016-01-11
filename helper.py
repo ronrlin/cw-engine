@@ -167,11 +167,14 @@ def create_curated_db_from_dict():
    client = MongoClient(mongo['hostname'], mongo['port'])      
    db = client[mongo['db_name']]
    print("loading the curated provision database...")
+   file_count = 0
    for filename in os.listdir(CURATED_PATH):
       with open(os.path.join(CURATED_PATH, filename),'rb') as json_data:
          my_data = json.load(json_data)
       result = db['curated'].insert_many(my_data)
-   print("curated db is completed!")
+      file_count += 1
+   print("(%s) files loaded." % str(file_count))
+   print("created and loaded the curated db.")
 
 def clear_curated_db():
    """ Empty the provision_group_info collection """
