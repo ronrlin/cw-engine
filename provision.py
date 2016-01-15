@@ -138,6 +138,10 @@ def get_description(provision_name):
 		return "No description available at this time."
 
 def init_data():
+
+	print("ERROR! Check provision.py and consider revisions to ProvisionStatistics!!!")
+	return
+
 	from statistics import ProvisionStatistics
 	miner = ProvisionMiner()
 
