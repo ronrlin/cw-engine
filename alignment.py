@@ -676,10 +676,10 @@ class Alignment(object):
                     'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
                     "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
                     "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
+                    "prov-simplicity-score" : astats.calculate_complexity(_block), # computed on the fly
+                    "prov-simplicity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
                     "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
                     "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
-                    "prov-simplicity-score" : 100 - astats.calculate_complexity(_block), # computed on the fly
-                    "prov-simplicity-avg" : round(100.0 - provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
                     "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
                     #"provision-tag" : "some-label", # computed on the fly
                 }
@@ -716,6 +716,12 @@ class Alignment(object):
         provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
         missing = list(set(provisions_expected) - set(provisions_found))
 
+        #obs = []
+        #if docstats["doc-complexity-score"] - docstats["group-complexity-score"] > 0:
+        #    obs = ["Above the typical nondisclosure."]
+        #else:
+        #    obs = ["Below the typical nondisclosure."]
+
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
@@ -723,10 +729,10 @@ class Alignment(object):
             'text-compare-count' : len(self.agreement_corpus.fileids()), 
             'doc-similarity-score' : docstats["doc-similarity-score"],  
             'doc-complexity-score' : docstats["doc-complexity-score"],
-            'doc-simplicity-score' : 100 - docstats["doc-complexity-score"],
+            'doc-simplicity-score' : docstats["doc-complexity-score"],
             'group-similarity-score' : docstats["group-similarity-score"], 
             'group-complexity-score' : docstats["group-complexity-score"], 
-            'group-simplicity-score' : 100 - docstats["group-complexity-score"], 
+            'group-simplicity-score' : docstats["group-complexity-score"], 
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
             'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.tag_dict,
