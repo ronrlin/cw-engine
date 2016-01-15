@@ -380,7 +380,15 @@ class WiserDatabase(object):
 
    def fetch_provision_type(self, provision_type):
       """ Returns all possible feature types in the curated db. """ 
-      return self.curated.find({'first_guess' : provision_type}, { '_id' : 0 })
+      return self.curated.find({'first_guess' : provision_type})
+
+   def fetch_provision_types(self, provision_type):
+      """ Returns all possible feature types in the curated db. """ 
+      return self.curated.distinct('first_guess')
+
+   def update_curated(self, oid, value):
+      result = self.curated.update_one({"_id" : ObjectId(oid) }, {"$set" : parameters})
+      return result
 
    def fetch_by_filename(self, filename):
       """ Returns records (key/value pairs) corresponding to records with a certain value
