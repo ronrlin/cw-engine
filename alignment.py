@@ -631,13 +631,13 @@ class Alignment(object):
         doc = " ".join([e[0] for e in tupleized])
         
         docstats = {}
-        docstats["doc-complexity-score"] = aparams["doc_gulpease"]
+        docstats["doc-complexity-score"] = round(aparams["doc_gulpease"], 1)
         docstats["group-complexity-score"] = contract_group["gulpease"]["mean"]
         docstats["group-complexity-std"] = math.sqrt(contract_group["gulpease"]["var"])
         docstats["group-complexity-min"] = contract_group["gulpease"]["min"]
         docstats["group-complexity-max"] = contract_group["gulpease"]["max"]
 
-        docstats["doc-flesch-score"] = aparams["doc_flesch"]
+        docstats["doc-flesch-score"] = round(aparams["doc_flesch"], 1)
         docstats["group-flesch-score"] = contract_group["flesch"]["mean"]
         docstats["group-flesch-std"] = math.sqrt(contract_group["flesch"]["var"])
         docstats["group-flesch-min"] = contract_group["flesch"]["min"]
@@ -656,7 +656,7 @@ class Alignment(object):
         docstats["group-syllable-max"] = contract_group["syllable_count"]["max"]
 
         corpus_stats = statistics.CorpusStatistics(self.agreement_corpus)
-        docstats["doc-similarity-score"] = corpus_stats.calculate_similarity(doc)['similarity']['mean']
+        docstats["doc-similarity-score"] = round(corpus_stats.calculate_similarity(doc)['similarity']['mean'], 1)
         docstats["group-similarity-score"] = contract_group["similarity"]["mean"]
         docstats["group-similarity-std"] = math.sqrt(contract_group["similarity"]["var"])
         docstats["group-similarity-min"] = contract_group["similarity"]["min"]
@@ -675,9 +675,9 @@ class Alignment(object):
                     'provision-readable' : provision_name,
                     'provision-description' : provision.get_description(provision_mach_name),
                     'consensus-percentage' : statistics.get_consensus(self.agreement_corpus, _type),
-                    "prov-similarity-score" : pstats.calculate_similarity(_block), 
-                    "prov-gulpease" : astats.get_gulpease(provision_mach_name),
-                    "prov-flesch" : astats.get_flesch(provision_mach_name),
+                    "prov-similarity-score" : round(pstats.calculate_similarity(_block)['similarity']['mean'], 1), 
+                    "prov-gulpease" : round(astats.get_gulpease(provision_mach_name), 1),
+                    "prov-flesch" : round(astats.get_flesch(provision_mach_name), 1),
                     "prov-word-count" : astats.get_word_count(provision_mach_name),
                     "prov-syllable-count" : astats.get_syllable_count(provision_mach_name),
                     "contractwiser-score" : 70.0,
