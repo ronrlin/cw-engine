@@ -134,6 +134,8 @@ def get_description(provision_name):
 		return "The Relationship of the Parties or No Partnership clause stipulates that the parties do not have any partnership or agency relationship. This means that the agreement does not give a party the authority to obligate the other."
 	elif provision_name == "governing_law_jurisdiction":
 		return "This clause specifies the location where the laws of a mutually agreed upon jurisdiction will govern the interpretation and enforcement of the terms of the contract."
+	elif provision_name == "preamble":
+		return "The preamble is an introductory statement of facts or assumptions upon which a contract is based.  It will typically contain names, addresses and should specify the date an agreement goes into effect."
 	else:
 		return "No description available at this time."
 
