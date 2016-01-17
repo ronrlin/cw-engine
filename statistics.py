@@ -12,9 +12,9 @@ from structure import AgreementSchema
 from structure import load_training_data
 from alignment import Alignment
 
+import os
 import numpy as np
 from nltk.tokenize import BlanklineTokenizer
-
 
 """
 CorpusStatistics(corpus)
@@ -26,6 +26,7 @@ The idea is to create instances of the objects above, which write data to the da
 function compute(...)
 """
 BASE_PATH = "./"
+DATA_PATH = os.path.join(BASE_PATH, "data/")
 
 class ProvisionStatistics(object):
 	""" 
@@ -74,17 +75,19 @@ class ProvisionStatistics(object):
 		vect = TfidfVectorizer(min_df=1)
 		if text is not None:
 			provisions.insert(0, text)
+		# TODO!!! look closely... i think i need to separate fit and transform here!
 		tfidf = vect.fit_transform(provisions)
 
 		from sklearn.metrics.pairwise import linear_kernel
 		cosine_similarities = linear_kernel(tfidf[0:1], tfidf).flatten()
 		stats = {}
-		# TODO: watch out for self-similarity... exclude values of 1.0
-		stats['mean'] = np.mean(cosine_similarities) * 100
-		stats['median'] = np.mean(cosine_similarities) * 100
-		stats['var'] = np.var(cosine_similarities) * 100
-		stats['max'] = np.max(cosine_similarities) * 100
-		stats['min'] = np.min(cosine_similarities) * 100
+		stats['similarity'] = {
+			'mean' : np.mean(cosine_similarities) * 100,
+			'median' : np.median(cosine_similarities) * 100,
+			'var' : np.var(cosine_similarities) * 100,
+			'max' :  np.max(cosine_similarities) * 100,
+			'min' : np.min(cosine_similarities) * 100,
+		}
 		return stats
 
 	def calculate_complexity(self, text=None):
@@ -105,31 +108,49 @@ class ProvisionStatistics(object):
 			text_blocks = [b.tokenize(self.corpus.raw(fileid)) for fileid in self.corpus.fileids()]
 			text_blocks = [paragraph for doc in text_blocks for paragraph in doc]
 
-		char_cnt = [len(thistext) for thistext in text_blocks]
-		word_cnt = [len(word_tokenize(thistext)) for thistext in text_blocks]
-		values = [calculate_gulpease(thistext) for thistext in text_blocks]
-		syllable_cnt = [count_syllables_in_text(thistext) for thistext in text_blocks]
-
 		stats = {}
-		stats['mean'] = np.mean(values)
-		stats['median'] = np.mean(values)
-		stats['var'] = np.var(values)
-		stats['max'] = np.max(values)
-		stats['min'] = np.min(values)
 
-		stats['mean_length'] = np.mean(word_cnt)
-		stats['median_length'] = np.median(word_cnt)
-		stats['var_length'] = np.var(word_cnt)
-		stats['max_length'] = np.max(word_cnt)
-		stats['min_length'] = np.min(word_cnt)
-
-		stats['mean_syllable'] = np.mean(syllable_cnt)
-		stats['median_syllable'] = np.median(syllable_cnt)
-		stats['var_syllable'] = np.var(syllable_cnt)
-		stats['max_syllable'] = np.max(syllable_cnt)
-		stats['min_syllable'] = np.min(syllable_cnt)
-
-		print(stats)
+		values = [calculate_gulpease(thistext) for thistext in text_blocks]
+		stats['gulpease'] = {
+			'mean' : np.mean(values),
+			'median' : np.mean(values),
+			'var' : np.var(values),
+			'max' : np.max(values),
+			'min' : np.min(values),
+		}
+		values = [calculate_flesch(thistext) for thistext in text_blocks]
+		stats['flesch'] = {
+			'mean' : np.mean(values),
+			'median' : np.mean(values),
+			'var' : np.var(values),
+			'max' : np.max(values),
+			'min' : np.min(values),
+		}
+		word_cnt = [len(word_tokenize(thistext)) for thistext in text_blocks]
+		stats['word_count'] = {
+			'mean' : np.mean(word_cnt),
+			'median' : np.median(word_cnt),
+			'var' : np.var(word_cnt),
+			'max' : np.max(word_cnt),
+			'min' : np.min(word_cnt),
+		}
+		syllable_cnt = [count_syllables_in_text(thistext) for thistext in text_blocks]		
+		stats['syllable_count'] = {
+			'mean' : np.mean(syllable_cnt),
+			'median' : np.median(syllable_cnt),
+			'var' : np.var(syllable_cnt),
+			'max' : np.max(syllable_cnt),
+			'min' : np.min(syllable_cnt),
+		}
+		char_cnt = [len(thistext) for thistext in text_blocks]
+		stats['char_count'] = {
+			'mean' : np.mean(char_cnt),
+			'median' : np.median(char_cnt),
+			'var' : np.var(char_cnt),
+			'max' : np.max(char_cnt),
+			'min' : np.min(char_cnt),
+		}
+		#print(stats)
 		return stats
 
 class CorpusStatistics(object):
@@ -137,7 +158,24 @@ class CorpusStatistics(object):
 	def __init__(self, corpus):
 		self.corpus = corpus
 
-	def calculate_similarity(self, category=None):
+	def transform(self):
+		"""
+
+					gulpease 	syllables 	words	
+		gulpease 	   34 			31		 21
+
+
+		mean		gulpease 	syllables 	words	
+		gulpease	22.3 			31 		 22
+
+
+		var			preamble 	recital		stuff
+
+
+		"""
+
+
+	def calculate_similarity(self, text=None):
 		""" 
 		Calculates a global doc-to-doc similarity average for a corpus of interest.
 		Similarity may be computed relative to reference subset of type 'category'.
@@ -146,21 +184,27 @@ class CorpusStatistics(object):
 
 		Returns the average similarity across documents.
 		"""
-		# load in the corpus and look the docs
-		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids(category)]
-		# vectorize the docs in the corpus
+		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids()]
 		vect = TfidfVectorizer(min_df=1)
+		vect.fit(docs)
+
+		if text is not None:
+			docs.insert(0, text)
+		
 		tfidf = vect.fit_transform(docs)
-		matrix = (tfidf * tfidf.T).A
-		#similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
-		stats = {}
-		stats['mean'] = np.mean(matrix) * 100
-		stats['median'] = np.median(matrix) * 100
-		stats['var'] = np.var(matrix) * 100
-		stats['max'] = np.max(matrix[0][matrix[0] != 1]) * 100 
-		stats['min'] = np.min(matrix) * 100
-		#return round(similarity_avg, 1)
-		return stats
+
+		from sklearn.metrics.pairwise import linear_kernel
+		cosine_similarities = linear_kernel(tfidf[0:1], tfidf).flatten()
+
+		newstats = {}
+		newstats['similarity'] = {
+			'mean' : np.mean(cosine_similarities) * 100,
+			'median' : np.median(cosine_similarities) * 100,
+			'var' : np.var(cosine_similarities) * 100,
+			'max' : np.max(cosine_similarities) * 100,
+			'min' : np.min(cosine_similarities) * 100,		
+		}
+		return newstats
 
 	def most_similar(self, doc, limit=5):
 		""" Determines what files are most similar to the presented doc. """
@@ -179,7 +223,7 @@ class CorpusStatistics(object):
 
 		return(fileids[related_docs_indices[1:]])
 
-	def calculate_complexity(self, category=None):
+	def calculate_complexity(self):
 		"""
 		Calculates a global doc-to-doc complexity average for a corpus of interest.
 		complexity may be computed relative to reference subset of type 'category'.
@@ -188,33 +232,52 @@ class CorpusStatistics(object):
 
 		Returns the average complexity across documents(category).
 		"""
-		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids(category)]
+		docs = [self.corpus.raw(fileid) for fileid in self.corpus.fileids()]
 
-		char_cnt = [len(text) for text in docs]
-		word_cnt = [len(word_tokenize(text)) for text in docs]
+		newstats = {}
+
 		values = [calculate_gulpease(text) for text in docs]
+		newstats['gulpease'] = {
+			'mean' : np.mean(values),
+			'median' : np.median(values),
+			'var' : np.var(values),
+			'max' : np.max(values),
+			'min' : np.min(values),		
+		}
+		flesch = [calculate_flesch(text) for text in docs]		
+		newstats['flesch'] = {
+			'mean' : np.mean(flesch),
+			'median' : np.median(flesch),
+			'var' : np.var(flesch),
+			'max' : np.max(flesch),
+			'min' : np.min(flesch),		
+		}
+		word_cnt = [len(word_tokenize(text)) for text in docs]		
+		newstats['word_count'] = {
+			'mean' : np.mean(word_cnt),
+			'median' : np.median(word_cnt),
+			'var' : np.var(word_cnt),
+			'max' : np.max(word_cnt),
+			'min' : np.min(word_cnt),		
+		}
+		char_cnt = [len(text) for text in docs]		
+		newstats['char_count'] = {
+			'mean' : np.mean(char_cnt),
+			'median' : np.median(char_cnt),
+			'var' : np.var(char_cnt),
+			'max' : np.max(char_cnt),
+			'min' : np.min(char_cnt),		
+		}
 		syllable_cnt = [count_syllables_in_text(text) for text in docs]
+		newstats['syllable_count'] = {
+			'mean' : np.mean(syllable_cnt),
+			'median' : np.median(syllable_cnt),
+			'var' : np.var(syllable_cnt),
+			'max' : np.max(syllable_cnt),
+			'min' : np.min(syllable_cnt),		
+		}
 
-		stats = {}
-		stats['mean'] = np.mean(values)
-		stats['median'] = np.median(values)
-		stats['var'] = np.var(values)
-		stats['max'] = np.max(values)
-		stats['min'] = np.min(values)		
-
-		stats['length_mean'] = np.mean(word_cnt)
-		stats['length_median'] = np.median(word_cnt)
-		stats['length_var'] = np.var(word_cnt)
-		stats['length_max'] = np.max(word_cnt)
-		stats['length_min'] = np.min(word_cnt)		
-
-		stats['syllable_mean'] = np.mean(syllable_cnt)
-		stats['syllable_median'] = np.median(syllable_cnt)
-		stats['syllable_var'] = np.var(syllable_cnt)
-		stats['syllable_max'] = np.max(syllable_cnt)
-		stats['syllable_min'] = np.min(syllable_cnt)		
-
-		return stats
+		return newstats
 
 class AgreementStatistics(object):
 	""" """
@@ -224,87 +287,152 @@ class AgreementStatistics(object):
 		self.raw = raw
 		self.output = None
 
-	def get_output(self):
-		""" 
-		This function builds the document that will be kept in the proper datastore.
-		Returns a dict that represents statistics about an agreement.
+	def transform(self):
 		"""
-		return self.output
+					preamble 	recital		stuff
+		gulpease 	   34         44         41 
+		syllables      31         40         22
+		words          21         45         33
 
-	def get_consensus(self, corpus, provision_type):
-		""" Finds the incidence of provision_type in the corpus provided.    
+		mean		preamble 	recital		stuff
+		gulpease	22.3           42.1       10.0
+		syllables      31         40         22
+
+
+		var			preamble 	recital		stuff
+
+
 		"""
-		#print("get_consensus for %s" % provision_type)
-		if corpus and len(corpus.fileids()) > 0:
-			#print("there are %s files in the corpus" % str(len(corpus.fileids())))
-			cnt = 0
-			for fileid in corpus.fileids():
-				search_info = { "filename" : fileid, "has_" + provision_type.replace("train/train_", "") : True}
-				datastore = WiserDatabase()
-				fs = datastore.fetch_by_tag(search_info)
-				if len(fs):
-					cnt = cnt + 1
-			return round(100 * (cnt / len(corpus.fileids())), 0)
-		else:
-			return -1
+		feature_names = [_type.replace("train/train_", "") for _block, _type in self.tupleized]
+		self._feature_names = list(set(feature_names))
+		print("_feature_names")
+		print(self._feature_names)
+		newtup= []
+		for f in self._feature_names:
+			blocks = " ".join([_block for _block, _type in self.tupleized if f in _type])
+			newtup.append((blocks, f))
+		self.gulpease = np.array([calculate_gulpease(_block) for _block, _type in newtup])
+		self.flesch = np.array([calculate_flesch(_block) for _block, _type in newtup])
+		self.syllables = np.array([count_syllables_in_text(_block) for _block, _type in newtup])
+		self.words = np.array([len(_block) for _block, _type in newtup])
+		return
+
+	#def anamolous(self):
+	#	value_matrix = [gulpease, syllables, words]
+	#	datastore = WiserDatabase()
+	#	gulpease_mean = np.array([datastore.get_provision_group(feature)['prov-complexity-avg'] for feature in feature_names])
+	#	gulpease_var = np.array([datastore.get_provision_group(feature)['prov-complexity-var'] for feature in feature_names])
+	#	gulpease_max = np.array([datastore.get_provision_group(feature)['prov-complexity-max'] for feature in feature_names])
+	#	gulpease_deviations = (gulpease - gulpease_mean) / np.sqrt(gulpease_var)
+	#	print("gulpease_deviations")
+	#	print(gulpease_deviations)
+	#	syllable_mean = [datastore.get_provision_group(feature)['prov-syllable-avg'] for feature in feature_names]
+	#	print("syllable_mean")
+	#	print(syllable_mean)
+	#	syllable_var = [datastore.get_provision_group(feature)['prov-syllable-var'] for feature in feature_names]
+	# print("syllable_var")
+	# print(syllable_var)
+	# syllable_max = [datastore.get_provision_group(feature)['prov-syllable-max'] for feature in feature_names]
+	# syllable_deviations = (np.array(syllables) - np.array(syllable_mean)) / np.sqrt(np.array(syllable_var))
+	# print("syllable_deviations")
+	# print(syllable_deviations)
+	# word_mean = np.array([datastore.get_provision_group(feature)['prov-length-avg'] for feature in feature_names])
+	# print("word_mean")
+	# print(word_mean)
+	# word_var = np.array([datastore.get_provision_group(feature)['prov-length-var'] for feature in feature_names])
+	# print("word_var")
+	# print(word_var)
+	# word_max = np.array([datastore.get_provision_group(feature)['prov-length-max'] for feature in feature_names])
+	# word_deviations = (words - word_mean) / np.sqrt(word_var)
+	# print("word_deviations")
+	# print(word_deviations)
+
+	# self._feature_names = feature_names
+	# self._transformed = np.array([gulpease_deviations, syllable_deviations, word_deviations])
+	# names = np.array(feature_names)
+	# print(names[word_deviations > 2])
+		#matrix.mean(axis=0)
+
+	def get_gulpease(self, _type):
+		col_index = self._feature_names.index(_type)
+		return self.gulpease[col_index]
+
+	def get_flesch(self, _type):
+		col_index = self._feature_names.index(_type)
+		return self.flesch[col_index]
+
+	def get_syllable_count(self, _type):
+		col_index = self._feature_names.index(_type)
+		return self.syllables[col_index]
+
+	def get_word_count(self, _type):
+		col_index = self._feature_names.index(_type)
+		return self.words[col_index]
+
+	#def get_output(self, feature_name):
+	#	""" 
+	#	This function builds the document that will be kept in the proper datastore.
+	#	Returns a dict that represents statistics about an agreement.
+	#	"""
+	#	col_index = self._feature_names.index(feature_name)
+	#	deviations = self._transformed[:,col_index]
+	#	return list(deviations)
 
 	def calculate_stats(self):
 		""" """
-		word_count = 0
+		doc = " ".join([e[0] for e in self.tupleized])
 		parameters = {}
-
-		doc = [e[0] for e in self.tupleized]
-		doc = " ".join(doc)
-		parameters['doc_gulpease'] = self.calculate_complexity(doc)
+		parameters['doc_gulpease'] = calculate_gulpease(doc)
+		parameters['doc_flesch'] = calculate_flesch(doc)
 		parameters["word_count"] = len(word_tokenize(doc))
 		parameters["para_count"] = len(self.tupleized)
-
+		parameters["syllable_count"] = count_syllables_in_text(doc)
 		for (_block, _type) in self.tupleized:
-			words = word_tokenize(_block)
-			word_count = word_count + len(words)
 			if _type:
 				parameters["has_" + _type.replace("train/train_", "")] = True
-			parameters[_type.replace("train/train_", "") + "_gulpease"] = self.calculate_complexity(_block)
-
-		self.output = parameters
+				parameters[_type.replace("train/train_", "") + "_gulpease"] = calculate_gulpease(_block)
+				parameters[_type.replace("train/train_", "") + "_flesch"] = calculate_flesch(_block)
 		return parameters
 
-	def calculate_flesch(self, text):
-		pass
+	#def calculate_complexity(self, text):
+	#	""" 
+	#	Function that computes the Gulpease score.
+	#	:param text: string 
+	#	"""
+	#	return calculate_gulpease(text)
 
-	def calculate_complexity(self, text):
-		""" 
-		Function that computes complexity.
-		:param text: string 
-		Returns a score from 0 to 100
-		"""
-		character_count = len(text)
-		word_count = len(word_tokenize(text))
-		sent_count = len(sent_tokenize(text))
-		gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
-		return round(gulpease, 1)
-
-	def calculate_similarity(self, text, corpus):
-		""" 
-		This SHOULD compare a given text to a reference corpus.
-		:param text: string of text
-		:param b: string of text
-		"""
-		docs = [corpus.raw(fileid) for fileid in corpus.fileids()]
-		docs.append(text)
-		# vectorize the docs in the corpus
-		vect = TfidfVectorizer(min_df=1)
-		tfidf = vect.fit_transform(docs)
-		matrix = (tfidf * tfidf.T).A
-		similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
-		return round(similarity_avg, 1)
+	#def calculate_similarity(self, text, corpus):
+	#	""" 
+	#	This SHOULD compare a given text to a reference corpus.
+	#	:param text: string of text
+	#	:param b: string of text
+	#	"""
+	#	docs = [corpus.raw(fileid) for fileid in corpus.fileids()]
+	#	docs.append(text)
+	#	# vectorize the docs in the corpus
+	#	vect = TfidfVectorizer(min_df=1)
+	#	tfidf = vect.fit_transform(docs)
+	#	matrix = (tfidf * tfidf.T).A
+	#	similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
+	#	return round(similarity_avg, 1)
 
 def calculate_gulpease(text):
 	character_count = len(text)
 	word_count = len(word_tokenize(text))
 	sent_count = len(sent_tokenize(text))
-	gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
-	return gulpease
+	if not word_count:
+		return 1
+	else: 
+		gulpease = 89 - 10 * (character_count/word_count) + 300 * (sent_count/word_count)
+		return gulpease
+
+def calculate_flesch(text):
+	""" Calculate the Flesch Reading Ease score, yielding values between 0 and 120. """
+	word_count = len(word_tokenize(text))
+	sent_count = len(sent_tokenize(text))
+	syllable_count = count_syllables_in_text(text)
+	flesch_score = 206.835 - 1.015* (word_count/sent_count) - 84.6 * (syllable_count / word_count)
+	return flesch_score
 
 def count_syllables_in_text(text):
 	words = word_tokenize(text)
@@ -321,23 +449,33 @@ def count_syllables_in_word(word):
 			count+=1
 	return count
 
+def get_consensus(corpus, provision_type):
+	""" Finds the incidence of provision_type in the corpus provided. """
+	datastore = WiserDatabase()
+	if corpus and len(corpus.fileids()) > 0:
+		cnt = 0
+		for fileid in corpus.fileids():
+			search_info = { "filename" : fileid, "has_" + provision_type.replace("train/train_", "") : True}
+			fs = datastore.fetch_by_tag(search_info)
+			if len(fs):
+				cnt = cnt + 1
+		return round(100 * (cnt / len(corpus.fileids())), 0)
+	else:
+		# TODO: error condition or assert _something_
+		return 0
+
 def compute_classified_stats():
 	""" 
 	Utility function that loads a corpus of agreements to populate db.classified
 	"""
-	print("obtain a corpus...")
 	from classifier import build_corpus
 	corpus = build_corpus()
 
-	print("load the datastore...")
 	datastore = WiserDatabase()
 	cnt = 0
+	# TODO!!!! you should use curated db for this 
 	for filename in corpus.fileids():
-		print("analyzing file %s..." % filename)
 		record = datastore.fetch_by_filename(filename)
-		print("record contains: ")
-		print(record)
-
 		if (record is not None):
 			object_id = str(record['_id'])
 			category = record['category']
@@ -351,62 +489,30 @@ def compute_classified_stats():
 
 			analysis = AgreementStatistics(tupleized=aligned_provisions)
 			stats = analysis.calculate_stats()
-			doc_gulpease = analysis.calculate_complexity(doc)
-			stats['doc_gulpease2'] = doc_gulpease
 			stats['category'] = category
 
 			for (_block, _type) in aligned_provisions:
 				if _type: 
-					if ("train/train_" in _type):
-						stats['has_' + _type.replace("train/train_", "")] = True
-					else:
-						stats['has_' + _type] = True
+					stats['has_' + _type.replace("train/train_", "")] = True
 
-					#NER here?
-
-			print("update the datastore")
 			result = datastore.update_record(filename=filename, parameters=stats)
+	print("compute_classified_stats completed.")
 
 def compute_contract_group_info():
 	""" 
 	Utility function that loads a corpus of agreements to populate db.classified
 	"""
-	print("load the datastore...")
 	from helper import WiserDatabase
-	datastore = WiserDatabase()
-
-	print("obtain a corpus...")
 	from statistics import CorpusStatistics
-	from classifier import build_corpus
-	corpus = build_corpus()
-	corpus_stats = CorpusStatistics(corpus)
-
-	for category in corpus.categories():
-		print("analyzing category %s..." % category)
-		#record = datastore.get_contract_group(category)
-
-		simstats = corpus_stats.calculate_similarity(category=category)
-		stats = {}
-		stats['group-similarity-score'] = simstats['mean']
-		stats['group-similarity-var'] = simstats['var']
-		stats['group-similarity-max'] = simstats['max']
-		stats['group-similarity-min'] = simstats['min']
-
-		comstats = corpus_stats.calculate_complexity(category=category)
-		stats['group-complexity-score'] = comstats['mean']
-		stats['group-complexity-var'] = comstats['var']
-		stats['group-complexity-max'] = comstats['max']
-		stats['group-complexity-min'] = comstats['min']
-		# some additional detail
-		stats['group-length-mean'] = comstats['length_mean']
-		stats['group-length-var'] = comstats['length_var']
-		stats['group-length-max'] = comstats['length_max']
-		stats['group-length-min'] = comstats['length_min']
-		stats['group-syllabus-mean'] = comstats['syllable_mean']
-		stats['group-syllabus-var'] = comstats['syllable_var']
-		stats['group-syllabus-max'] = comstats['syllable_max']
-		stats['group-syllabus-min'] = comstats['syllable_min']
-
+	datastore = WiserDatabase()
+	for category in datastore.get_category_names():
+		records = datastore.fetch_by_category(category)
+		fileids = [r['filename'] for r in records]
+		corpus = PlaintextCorpusReader(DATA_PATH, fileids)
+		corpus_stats = CorpusStatistics(corpus)
+		stats = corpus_stats.calculate_similarity()
+		comstats = corpus_stats.calculate_complexity()
+		stats.update(comstats)
 		result = datastore.update_contract_group(agreement_type=category, info=stats)
 		if (result.acknowledged and result.modified_count):
 			print("matched count is %s" % str(result.matched_count))
@@ -454,37 +560,14 @@ def compute_provision_group_info():
 	print("load the datastore...")
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
-
 	# obtain a list of provision text, type
-
 	for (name, path) in load_training_data().items():
 		print("loading provision %s " % name)
 		stats = ProvisionStatistics(name)
-		info = {}
 		siminfo = stats.calculate_similarity()
-		info['prov-similarity-avg'] = siminfo['mean']
-		info['prov-similarity-median'] = siminfo['median']
-		info['prov-similarity-var'] = siminfo['var']
-		info['prov-similarity-max'] = siminfo['max']
-		info['prov-similarity-min'] = siminfo['min']
 		cominfo = stats.calculate_complexity()
-		info['prov-complexity-avg'] = cominfo['mean'] 
-		info['prov-complexity-median'] = cominfo['median'] 
-		info['prov-complexity-var'] = cominfo['var'] 
-		info['prov-complexity-max'] = cominfo['max'] 
-		info['prov-complexity-min'] = cominfo['min'] 
-		info['prov-length-avg'] = cominfo['mean_length']
-		info['prov-length-median'] = cominfo['median_length'] 
-		info['prov-length-var'] = cominfo['var_length'] 
-		info['prov-length-max'] = cominfo['max_length'] 
-		info['prov-length-min'] = cominfo['min_length']
-		info['prov-syllable-avg'] = cominfo['mean_syllable']
-		info['prov-syllable-median'] = cominfo['median_syllable'] 
-		info['prov-syllable-var'] = cominfo['var_syllable'] 
-		info['prov-syllable-max'] = cominfo['max_syllable'] 
-		info['prov-syllable-min'] = cominfo['min_syllable']
-
-		result = datastore.update_provision_group(name, info)
+		siminfo.update(cominfo)
+		result = datastore.update_provision_group(name, siminfo)
 		if (result.acknowledged and result.modified_count):
 			print("matched count is %s" % str(result.matched_count))
 			print("modified count is %s" % str(result.modified_count))
@@ -500,16 +583,3 @@ def display_provision_group_info():
 	results = datastore.provision_group.find({})
 	for provision_info in results:
 		print(provision_info)
-
-def testing_calcs():
-	sample_provision = "Some text that represents a provision from an uploaded agreement."
-
-	# load ProvisionStats with no provision specified.
-	stats = ProvisionStatistics("confidential_information")
-	comp_score = stats.calculate_complexity(text=sample_provision)
-	sim_score = stats.calculate_similarity(text=sample_provision)
-	print("comp_score is %s" % str(comp_score))
-	print("sim_score is %s" % str(sim_score))
-	#astats = AgreementStatistics(tupleized)
-	#result = stats.calculate_complexity()
-	#result = stats.calculate_similarity()
