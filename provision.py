@@ -136,6 +136,8 @@ def get_description(provision_name):
 		return "This clause specifies the location where the laws of a mutually agreed upon jurisdiction will govern the interpretation and enforcement of the terms of the contract."
 	elif provision_name == "preamble":
 		return "The preamble is an introductory statement of facts or assumptions upon which a contract is based.  It will typically contain names, addresses and should specify the date an agreement goes into effect."
+	elif provision_name == "recital":
+		return "A recital sets out the background to the contract. It usually asserts some basic facts and definitions and then precedes the legally binding promises that your contract will make."
 	else:
 		return "No description available at this time."
 
