@@ -795,7 +795,6 @@ class Alignment(object):
             'agreement_type' : self.schema.get_agreement_type(), 
             'text-compare-count' : len(self.agreement_corpus.fileids()), 
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
-            #'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.tag_dict,
             'entities' : self.entity_dict,
             'summary' : { 
@@ -868,95 +867,7 @@ def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     #for sent in testset: 
     #    for chunk in nltk.ne_chunk(nltk.pos_tag(nltk.word_tokenize(sent))):
     #        if hasattr(chunk, 'label'):
-    #            print(chunk.label(), ' '.join(c[0] for c in chunk.leaves()))
-
-def testr():
-    filename = "nda-0000-0011.txt"
-    print("obtain a corpus...")
-    from classifier import build_corpus
-    corpus = build_corpus()
-    from structure import AgreementSchema
-    schema = AgreementSchema()
-    schema.load_schema('nondisclosure')
-    #from Alignment import alignment
-    doc = corpus.raw(filename)
-    aligner = Alignment(schema=schema, vectorizer=2, all=True)
-    paras = aligner.tokenize(doc)
-    paras = aligner.simplify(paras)
-    aligned_provisions = aligner.align(paras, version=2)
-    f = Feature()
-    f.load_dict()
-    print(f.dict_identify(aligned_provisions))
-
-    #f2 = Feature()
-    # f2.load_dict(class_id=True)
-    # aligned_provisions --> 
-    # f2.quality_check(aligned_provisions, feature_provisions)
-    #f2.dict_identify(aligned_provisions)
-
-    #dict = f2.build_dict(aligned_provisions, type="provision")
-    #new_aligned = f2.quality_check(aligned_provisions, dict)
-
-
-
-def comp():
-    print("obtain a corpus...")
-    from structure import AgreementSchema
-    from classifier import build_corpus
-    schema = AgreementSchema()
-    schema.load_schema('nondisclosure')
-    corpus = build_corpus()
-    doc = corpus.raw("nda-0000-0014.txt")
-
-    aligner1 = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=False)
-    aligner2 = Alignment(schema=schema, vectorizer=TFIDF_VECT, all=True)
-
-    paras = aligner1.tokenize(doc)
-    aligned_provisions1 = aligner1.align(paras) # aligned_provisions is a list of tuples
-    print(aligned_provisions1)
-    paras = aligner2.tokenize(doc)
-    aligned_provisions2 = aligner2.align(paras) # aligned_provisions is a list of tuples
-
-    return(aligner1, aligner2)
-
-def test_tag_system():
-    """  """
-    uni = {"disclosure_type" : "unilateral"}
-    mut = {"disclosure_type" : "mutual"}
-    from helper import WiserDatabase
-    datastore = WiserDatabase()
-
-    m_fileids = datastore.fetch_by_tag(mut)
-    u_fileids = datastore.fetch_by_tag(uni)
-
-    tupled = zip(m_fileids, [mut] * len(m_fileids)) + (zip(u_fileids, [uni] * len(u_fileids)))
-    print("%s files will be loaded into tag corpus." % str(len(tupled)))
-
-    mapped = dict(tupled)
-    nltk_is_stupid = [ [key] for key in mapped.keys()]
-    #print(nltk_is_stupid)
-    #tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, mapped.keys(), cat_map=mapped)
-    tagged_corpus = CategorizedPlaintextCorpusReader(DATA_PATH, nltk_is_stupid, cat_map=mapped)                
-    vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-    #vectorizer = TfidfVectorizer(input='content', stop_words=None, ngram_range=(1,2))
-    from classifier import AgreementVectorClassifier 
-    classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
-    classifier.fit()
-
-    print("obtain a corpus...")
-    from structure import AgreementSchema
-    from classifier import build_corpus
-    schema = AgreementSchema()
-    schema.load_schema('nondisclosure')
-    corpus = build_corpus()
-    document = corpus.raw("nda-0000-0052.txt")
-
-    result = {}
-    result['type'] = "disco"
-    result['category'] = classifier.classify_data([document])
-    result['reference-info'] = '' #some id into a reference db
-    result['text'] = '' #TODO: this is how the tags get displayed
-    print(result)    
+    #            print(chunk.label(), ' '.join(c[0] for c in chunk.leaves()))  
 
 def build_provision_tests():
     provisions = []
