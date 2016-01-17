@@ -368,7 +368,7 @@ class Alignment(object):
         flesch_std = math.sqrt(stats["flesch"]["var"])
         _variability = 1 / (flesch_std * flesch_std)
 
-        decision = np.array(list(expected, _consensus, _similarity, _complexity, _variability))
+        decision = np.array([expected, _consensus, _similarity, _complexity, _variability])
         
         _expected_weight = 0.08
         _consensus_weight = 0.15
