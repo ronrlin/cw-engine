@@ -232,6 +232,7 @@ def func(aligner, filename="nda-0000-0008.txt"):
 	aligned_provisions = aligner.align(paras, version=2)
 
 	feature = Feature()
+	feature.load_trainers()
 	provision_features = feature.text_identify(paras)
 
 	"""
