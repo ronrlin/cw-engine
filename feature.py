@@ -1,18 +1,12 @@
 #!/usr/bin/python
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction import DictVectorizer
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
-from nltk.corpus.reader.plaintext import CategorizedPlaintextCorpusReader
 from nltk.tokenize import BlanklineTokenizer
 from sklearn import svm
 
 import os
 import nltk
 from nltk.tokenize import word_tokenize
-from structure import AgreementSchema
-from structure import load_training_data
-from structure import get_provision_name_from_file
 from trainer import Trainer
 
 BASE_PATH = "./"
