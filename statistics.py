@@ -7,9 +7,7 @@ from scipy.spatial.distance import cosine
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 
-from structure import AgreementSchema
 from structure import load_training_data
-from alignment import Alignment
 
 import os
 import numpy as np
@@ -457,7 +455,10 @@ def compute_classified_stats():
 
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
-	cnt = 0
+
+	from structure import AgreementSchema
+	from alignment import Alignment
+
 	# TODO!!!! you should use curated db for this 
 	for filename in corpus.fileids():
 		record = datastore.fetch_by_filename(filename)
