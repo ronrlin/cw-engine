@@ -17,6 +17,7 @@ from feature import Feature
 from provision import ProvisionMiner
 
 import numpy as np
+import math
 
 BASE_PATH = "./"
 DATA_PATH = os.path.join(BASE_PATH, "data/")
@@ -348,16 +349,7 @@ class Alignment(object):
                     "contractwiser-score" : ''
 
         """
-        # might make sense to pass a contract_id!!!
-        # make it possible to "redline" markup with parameter redline=False
-
-        thresholds = self.thresholds
-        if redline: 
-            print("Look for redlines.")
-            print(thresholds)
-
         _markup_list = []
-        concept_provs = self.concept_dict.keys()
         inc = dict((y,0) for (x, y) in tupleized)
         for (_block, _type) in tupleized:
             text = _block
@@ -367,33 +359,101 @@ class Alignment(object):
                 provision_name = get_provision_name_from_file(_type, dashed=True)
                 if provision_name in provisionstats.keys():
                     sim_score = provisionstats[provision_name]["prov-similarity-score"]
+                    sim_mean = provisionstats[provision_name]["similarity"]["mean"]
+                    sim_std = math.sqrt(provisionstats[provision_name]["similarity"]["var"])
+
                     gulpease = provisionstats[provision_name]["prov-gulpease"]
                     gulpease_mean = provisionstats[provision_name]["gulpease"]["mean"]
+                    gulpease_std = math.sqrt(provisionstats[provision_name]["gulpease"]["var"])
+
+                    flesch = provisionstats[provision_name]["prov-flesch"]
+                    flesch_mean = provisionstats[provision_name]["flesch"]["mean"]
+                    flesch_std = math.sqrt(provisionstats[provision_name]["flesch"]["var"])
+
                     consensus_score = provisionstats[provision_name]["consensus-percentage"]
 
                     reqs = [filename for (prov, filename) in self.schema.get_provisions()]
 
-                    if (redline and _type in reqs) and consensus_score < 70:
-                        import config
-                        print("static mode status is %s" % str(config.is_static_mode()))
-                        print("do a redline for %s provision" % _type)
-                        if config.is_static_mode():
-                           text = self.get_alt_text(_type, text, inc[_type])
-                        else:
-                           text = self.get_new_alt_text(_type, text, inc[_type])
+                    if redline:
+                        _expected = _type in reqs
+                        decision = redline_decision(provisionstats[provision_name], _expected)
+                        if decision:
+                            text = self.get_alt_text(_type, text, inc[_type])
+                            #text = self.get_new_alt_text(_type, text, inc[_type])
+                        else: 
+                            print("decision made to not redline.")
+                            text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
+                            text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
                     else:
-                        #print("no need to redline %s provision" % _type)
                         text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
                         text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
                 else: 
+                    #TODO: this can be consolidated with the case "if not _type" case 
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
                     text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
         return " ".join(_markup_list)
+
+    def redline_decision(self, stats, expected):
+        _consensus = stats["consensus-percentage"]
+
+        sim_score = stats["prov-similarity-score"]
+        sim_mean = stats["similarity"]["mean"]
+        sim_std = math.sqrt(stats["similarity"]["var"])
+        _similarity = (sim_score - sim_mean) / sim_std
+
+        gulpease = stats["prov-gulpease"]
+        gulpease_mean = stats["gulpease"]["mean"]
+        gulpease_std = math.sqrt(stats["gulpease"]["var"])
+
+        flesch = stats["prov-flesch"]
+        flesch_mean = stats["flesch"]["mean"]
+        flesch_std = math.sqrt(stats["flesch"]["var"])
+        _complexity = (flesch - flesch_mean) / flesch_std
+
+        flesch = stats["prov-flesch"]
+        flesch_mean = stats["flesch"]["mean"]
+        flesch_std = math.sqrt(stats["flesch"]["var"])
+        _variability = 1 / (flesch_std * flesch_std)
+
+        decision = np.array(list(expected, _consensus, _similarity, _complexity, _variability))
+        
+        _expected_weight = 0.08
+        _consensus_weight = 0.15
+        _similarity_weight = 0.30
+        _complexity_weight = 0.22
+        _variability_weight = 0.25
+        weights = np.array(list(_expected_weight, _consensus_weight, _similarity_weight, _complexity_weight, _variability_weight))
+
+        # Linear Regression Model to output a Redline Decision
+        # Logic for redline
+
+        ## Is the provision required?
+        ##### If required/expected
+        ##### If not expected, then consider striking. 
+
+        ## Is the provision consensus? 
+        ##### If it is less than n% common, then consider striking?
+        ##### If it is common...
+
+        ## If the similarity is low:
+        ##### 
+        ##### 
+        ## If the flesch is low: 
+        #####
+        #####
+
+        #This is crap############
+        if _consensus < 70:
+            return True
+        else:
+            return False
+
+        #########################
 
     def set_thresholds(self, provisionstats):
         """ Function creates a dictionary of thresholds. """
@@ -620,7 +680,6 @@ class Alignment(object):
     def calc_provisionstats(self, tupleized):
         import statistics
         import provision
-        import math
  
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
@@ -736,7 +795,7 @@ class Alignment(object):
             'agreement_type' : self.schema.get_agreement_type(), 
             'text-compare-count' : len(self.agreement_corpus.fileids()), 
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
-            'complexity-threshold' : self.thresholds["complexity"],
+            #'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.tag_dict,
             'entities' : self.entity_dict,
             'summary' : { 
