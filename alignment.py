@@ -44,7 +44,6 @@ class Alignment(object):
             provision trainers
         """
         self.schema = schema
-        self.concept_dict = None
         self.tag_dict = None
         self.entity_dict = None
         self.raw_content = None
@@ -172,40 +171,6 @@ class Alignment(object):
             tupleized = list(zip(content, list(results)))
         return tupleized
 
-    def build_concepts(self, tupleized):
-        concepts = self.schema.get_concepts()
-        concept_keys = [a[0] for a in concepts]
-        provisions = self.schema.get_provisions()
-
-        #unique_provs = set(results)
-        self.concept_dict = dict.fromkeys(concept_keys, [])
-        for c in concepts: 
-            ctr = 0
-            index = 0
-            for (_text, _type) in tupleized:
-                if (c[0] == _type or c[0] in _type):
-                    dict_val = {}
-                    if ("concept/train_" in c[1]):
-                        # Some concepts require loading a trainer
-                        fileids = c[1].replace(" ", "").split(",")
-                        concept_trainer = Trainer(fileids=fileids)
-                        _class = concept_trainer.classify_text(_text)
-                        _class = _class.replace("concept/train_", "")
-                        dict_val = { 'class' : _class.replace("_", "-"), 'index' : index, 'start' : 0, 'ctr' : ctr, 'len' : _text.find(".") - 1 }
-                        provkey = _type.replace("train/train_", "")
-                        if (dict_val['start'] > 0 and dict_val['len'] > 0):
-                            self.concept_dict[provkey].append(dict_val)
-                            ctr = ctr + 1 # this tells you how many times you've found this type of provision
-                    else: 
-                        # Some concepts can be obtained otherwise
-                        for con in c[1:]:
-                            dict_val = self._markup_concepts(concept_name=con, text=_text, index=index, counter=ctr)
-                            if (dict_val['start'] > 0 and dict_val['len'] > 0):
-                                provkey = _type.replace("train/train_", "")
-                                self.concept_dict[provkey].append(dict_val)
-                                ctr = ctr + 1 # this tells you how many times you've found this type of provision
-                index = index + 1
-
     def align(self, content, version=1):
         """ The smartest part.
         :param content: a list of strings 
@@ -217,14 +182,13 @@ class Alignment(object):
         self.build_tag_dict(tupleized)
         self.build_entities_dict(tupleized)
 
+        # TODO: this might possibly be loaded when Alignment() is instantiated.
         feature = Feature()
         feature.load_trainers()
         # feature.load_dict()
 
         # TODO: you should pass tupleized into text_identify
         self.provision_features = feature.text_identify(content)
-        # Build a concepts dictionary that will be used in get_markup
-        self.build_concepts(tupleized)
         
         # ContractGenome Fit goes here?
         # TODO: Based on the tupleized classification, the feature classification,         
@@ -260,22 +224,6 @@ class Alignment(object):
             else:
                 new_tupleized.append((provision, _type))
         return new_tupleized
-
-    def _markup_concepts(self, concept_name, text, index, counter=0):
-        """ This is trivial.  Put a span around exact matches 
-        of the 'concept' in the text.  The 'concept' is just
-        the concept_name with underscores removed.
-        """
-        concept_str = concept_name.replace("_", " ")
-        # the index marks the index in tupleized where the concept is found.
-        _index = index
-        # the counter keeps track of the incidence of this concept.
-        _ctr = counter
-        _class = concept_name.replace("_", "-")
-        _start = text.find(concept_str)
-        _len = len(concept_str)
-        values = { 'class' : _class, 'index' : _index, 'start' : _start, 'ctr' : _ctr, 'len' : _len }
-        return values
 
     def tokenize(self, content):
         """ 
@@ -376,7 +324,7 @@ class Alignment(object):
 
                     if redline:
                         _expected = _type in reqs
-                        decision = redline_decision(provisionstats[provision_name], _expected)
+                        decision = self.redline_decision(provisionstats[provision_name], _expected)
                         if decision:
                             text = self.get_alt_text(_type, text, inc[_type])
                             #text = self.get_new_alt_text(_type, text, inc[_type])
@@ -620,19 +568,6 @@ class Alignment(object):
         self.tag_dict = output
         return 
 
-    def get_concept_detail(self):
-        concept_detail = {}
-        allconcepts = self.schema.get_concepts()
-        for c in allconcepts:
-            c = c[1]
-            c = c.replace(" ", "")
-            c = c.split(",")
-            for concepts in c:
-                concept_class = concepts.replace("concept/train_", "")
-                concept_class = concept_class.replace("_", "-")
-                concept_detail[concept_class] = { "description" : "this will say something about %s" % concept_class, "title" : concept_class}
-        return concept_detail
-
     def compute_score(self, doc_similarity, group_similarity, doc_complexity, group_complexity):
         points = 0
         # agreement term - 10 points
@@ -771,6 +706,7 @@ class Alignment(object):
 
         from statistics import CorpusStatistics
         cstats = CorpusStatistics(self.agreement_corpus)
+        # TODO: wouldn't it be great to link a user to similar files?  YES!  Obtain urls to similar_files.
         similar_files = list(cstats.most_similar(doc))
         newtag = {}
         newtag["type"] = "most_similar"
@@ -805,7 +741,6 @@ class Alignment(object):
         }
         document['mainDoc'].update(docstats)
         document['provisions'] = provisionstats
-        #document['concepts'] = self.get_concept_detail()
         document['concepts'] = {}
         return document
 
