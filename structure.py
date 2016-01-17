@@ -101,7 +101,7 @@ def load_training_data():
 def get_provision_name_from_file(filename, dashed=False):
 	provisions = load_training_data()
 	provision_name = [name for name, fi in provisions.iteritems() if (fi == filename)]
-	if (not provision_name):
+	if not provision_name:
 		return "invalid"
 	else: 
 		provision_name = provision_name[0]
