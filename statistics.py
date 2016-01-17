@@ -314,7 +314,7 @@ class AgreementStatistics(object):
 		self.gulpease = np.array([calculate_gulpease(_block) for _block, _type in newtup])
 		self.flesch = np.array([calculate_flesch(_block) for _block, _type in newtup])
 		self.syllables = np.array([count_syllables_in_text(_block) for _block, _type in newtup])
-		self.words = np.array([len(_block) for _block, _type in newtup])
+		self.words = np.array([len(word_tokenize(_block)) for _block, _type in newtup])
 		return
 
 	#def anamolous(self):
