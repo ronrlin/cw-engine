@@ -7,7 +7,6 @@ from scipy.spatial.distance import cosine
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus.reader.plaintext import PlaintextCorpusReader
 
-from helper import WiserDatabase
 from structure import AgreementSchema
 from structure import load_training_data
 from alignment import Alignment
@@ -284,25 +283,9 @@ class AgreementStatistics(object):
 	def __init__(self, tupleized, raw=None):
 		""" """
 		self.tupleized = tupleized
-		self.raw = raw
-		self.output = None
 
 	def transform(self):
-		"""
-					preamble 	recital		stuff
-		gulpease 	   34         44         41 
-		syllables      31         40         22
-		words          21         45         33
-
-		mean		preamble 	recital		stuff
-		gulpease	22.3           42.1       10.0
-		syllables      31         40         22
-
-
-		var			preamble 	recital		stuff
-
-
-		"""
+		""" Transform tupleized into numpy arrays of numbers to do some statistics. """
 		feature_names = [_type.replace("train/train_", "") for _block, _type in self.tupleized]
 		self._feature_names = list(set(feature_names))
 		print("_feature_names")
@@ -451,6 +434,7 @@ def count_syllables_in_word(word):
 
 def get_consensus(corpus, provision_type):
 	""" Finds the incidence of provision_type in the corpus provided. """
+	from helper import WiserDatabase
 	datastore = WiserDatabase()
 	if corpus and len(corpus.fileids()) > 0:
 		cnt = 0
@@ -471,6 +455,7 @@ def compute_classified_stats():
 	from classifier import build_corpus
 	corpus = build_corpus()
 
+	from helper import WiserDatabase
 	datastore = WiserDatabase()
 	cnt = 0
 	# TODO!!!! you should use curated db for this 
@@ -503,8 +488,9 @@ def compute_contract_group_info():
 	Utility function that loads a corpus of agreements to populate db.classified
 	"""
 	from helper import WiserDatabase
-	from statistics import CorpusStatistics
 	datastore = WiserDatabase()
+
+	from statistics import CorpusStatistics
 	for category in datastore.get_category_names():
 		records = datastore.fetch_by_category(category)
 		fileids = [r['filename'] for r in records]
@@ -522,11 +508,9 @@ def display_contract_group_info():
 	""" 
 	prints out the contract_group collection for some metastats about contracts.
 	"""
-	print("load the datastore...")
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
 
-	print("obtain a corpus...")
 	from classifier import build_corpus
 	corpus = build_corpus()
 
@@ -539,7 +523,6 @@ def compute_curated_info():
 	This function will go through the db.curated in mongo and calculate
 	stats about the text provisions.  
 	"""
-	print("load the datastore...")
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
 	all_types = datastore.fetch_provision_types()
@@ -557,10 +540,8 @@ def compute_provision_group_info():
 	It loads all training files and calculates similarity/complexity
 	for each sentence in the training file.  
 	"""
-	print("load the datastore...")
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
-	# obtain a list of provision text, type
 	for (name, path) in load_training_data().items():
 		print("loading provision %s " % name)
 		stats = ProvisionStatistics(name)
@@ -576,10 +557,8 @@ def display_provision_group_info():
 	""" 
 	prints out the provision_group collection for some metastats about contracts.
 	"""
-	print("load the datastore...")
 	from helper import WiserDatabase
 	datastore = WiserDatabase()
-	# Get all the provision types 
 	results = datastore.provision_group.find({})
 	for provision_info in results:
 		print(provision_info)
