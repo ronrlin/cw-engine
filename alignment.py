@@ -227,8 +227,8 @@ class Alignment(object):
         
         # ContractGenome Fit goes here?
         # TODO: Based on the tupleized classification, the feature classification,         
-        print("about to do sanity check")
-        print([b for (a,b) in self.provision_features])
+        #print("about to do sanity check")
+        #print([b for (a,b) in self.provision_features])
         #tupleized = self.sanity_check(tupleized)
         return tupleized
 
@@ -364,33 +364,16 @@ class Alignment(object):
             if not _type:
                 text = "<p><div>" + text + "</div></p>"
             else: 
-                # first add concepts
-                if (get_provision_name_from_file(_type) in concept_provs):
-                    values = self.concept_dict[get_provision_name_from_file(_type)]
-                    if values:
-                        tc = values.pop(0)
-                        text = text[:tc['start']] + "<span id='concept-" + tc['class'] + "-" + str(tc['ctr']) + "' class='concept " + tc['class'] + "'>" + text[tc['start']:tc['start']+tc['len']] + "</span>" + text[tc['start']+tc['len']:]
-
-                # then wrap in provision markup
-                # I could calculate stats here.
-                # TODO: need to build a condition to decide whether to redline a paragraph
                 provision_name = get_provision_name_from_file(_type, dashed=True)
                 if provision_name in provisionstats.keys():
                     sim_score = provisionstats[provision_name]["prov-similarity-score"]
-                    sim_avg = provisionstats[provision_name]["prov-similarity-avg"]
-                    comp_score = provisionstats[provision_name]["prov-complexity-score"]
-                    comp_avg = provisionstats[provision_name]["prov-complexity-avg"]
-                    cw_score = provisionstats[provision_name]["contractwiser-score"]
+                    gulpease = provisionstats[provision_name]["prov-gulpease"]
+                    gulpease_mean = provisionstats[provision_name]["gulpease"]["mean"]
                     consensus_score = provisionstats[provision_name]["consensus-percentage"]
 
-                    #print("similarity: %s and complexity: %s and consensus %s" % (sim_score, comp_score, consensus_score))
-                    # consider a utility function here
-                    # consider trying consensus
-                    # consider redlining only the "required provisions"
                     reqs = [filename for (prov, filename) in self.schema.get_provisions()]
-                    # print("reqs for comp to %s" % _type)
-                    # print(reqs)
-                    if (redline and _type in reqs) and (sim_score <= thresholds["complexity"] or consensus_score < thresholds["consensus"]):
+
+                    if (redline and _type in reqs) and consensus_score < 70:
                         import config
                         print("static mode status is %s" % str(config.is_static_mode()))
                         print("do a redline for %s provision" % _type)
@@ -415,16 +398,16 @@ class Alignment(object):
     def set_thresholds(self, provisionstats):
         """ Function creates a dictionary of thresholds. """
 
-        complex_stats = np.array([stats["prov-complexity-score"] for (prov_name, stats) in provisionstats.iteritems()])
-        similar_stats = np.array([stats["prov-similarity-score"] for (prov_name, stats) in provisionstats.iteritems()])
-        cw_stats = np.array([stats["contractwiser-score"] for (prov_name, stats) in provisionstats.iteritems()])
-        consensus_stats = np.array([stats["consensus-percentage"] for (prov_name, stats) in provisionstats.iteritems()])
+        #complex_stats = np.array([stats["prov-complexity-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        #similar_stats = np.array([stats["prov-similarity-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        #cw_stats = np.array([stats["contractwiser-score"] for (prov_name, stats) in provisionstats.iteritems()])
+        #consensus_stats = np.array([stats["consensus-percentage"] for (prov_name, stats) in provisionstats.iteritems()])
         #np.nanmean(complex_stats, axis=1)
         thresholds = {
-            "complexity" : np.nanmedian(complex_stats),
-            "similarity" : np.nanmedian(similar_stats),
-            "cw" : np.nanmedian(cw_stats),
-            "consensus" : np.nanmedian(consensus_stats),
+            "complexity" : 50,
+            "similarity" : 50,
+            "cw" : 50,
+            "consensus" : 50,
         }
         self.thresholds = thresholds
         return
@@ -486,8 +469,7 @@ class Alignment(object):
             tag_name = tag[0]
             tag_values = tag[1].split(",") # list of all possible values
 
-            search_text = [_block for (_block, _type) in tupleized if tag_name in _type]
-            search_text = " ".join(search_text)
+            search_text = " ".join([_block for (_block, _type) in tupleized if tag_name in _type])
             nerz = tagger.get_entities(search_text)
 
             for entity_type in tag_values:
@@ -499,20 +481,20 @@ class Alignment(object):
                     result['text'] = nerz[entity_type]
                     output.append(result)
 
-            import nltk 
-            sentences = nltk.sent_tokenize(search_text)
-            tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
-            tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
-            if tagged_sentences:
-                cardinalnum = [word for sent in tagged_sentences for (word, pos) in sent if pos == "CD"]
-                cardinalnum = [x for x in cardinalnum if x not in ["(", ")"]]
-                if cardinalnum:
-                    result = {}
-                    result['type'] = tag_name + "_cardinal_number"
-                    result['category'] = tag_name + "_cardinal_number"
-                    result['reference-info'] = '' #some id into a reference db
-                    result['text'] = cardinalnum
-                    output.append(result)
+            #import nltk 
+            #sentences = nltk.sent_tokenize(search_text)
+            #tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
+            #tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
+            #if tagged_sentences:
+            #    cardinalnum = [word for sent in tagged_sentences for (word, pos) in sent if pos == "CD"]
+            #    cardinalnum = [x for x in cardinalnum if x not in ["(", ")"]]
+            #    if cardinalnum:
+            #        result = {}
+            #        result['type'] = tag_name + "_cardinal_number"
+            #        result['category'] = tag_name + "_cardinal_number"
+            #        result['reference-info'] = '' #some id into a reference db
+            #        result['text'] = cardinalnum
+            #        output.append(result)
 
             import re
             duration_match = []
@@ -522,17 +504,13 @@ class Alignment(object):
             if duration_match:
                 result = {}
                 result['type'] = tag_name + "_duration"
-                result['category'] = tag_name + "_duration"
+                result['category'] = get_tag_text(tag_name + "_duration")
                 result['reference-info'] = '' #some id into a reference db
                 result['text'] = duration_match
                 output.append(result)
 
         self.entity_dict = output
         return         
-
-    def sanitize_entity_dict(self):
-        possible_keys = {"DATE", "ORGANIZATION", "PERSON", "LOCATION", "MONEY", "PERCENT", "TIME"}
-        return
 
     def build_tag_dict(self, tupleized):
         tags = self.schema.get_tags()
@@ -640,22 +618,49 @@ class Alignment(object):
         return round(score, 1)
 
     def calc_provisionstats(self, tupleized):
-        from statistics import AgreementStatistics
+        import statistics
         import provision
-
+        import math
+ 
         contract_group = self.datastore.get_contract_group(self.schema.get_agreement_type()) 
 
-        astats = AgreementStatistics(tupleized)
+        astats = statistics.AgreementStatistics(tupleized)
+        astats.transform()
         aparams = astats.calculate_stats()
-        # doc is the text of the agreement, formed by joining all the text blocks in the tuple
-        doc = [e[0] for e in tupleized]
-        doc = " ".join(doc)
+
+        doc = " ".join([e[0] for e in tupleized])
         
         docstats = {}
-        docstats["doc-similarity-score"] = astats.calculate_similarity(doc, self.agreement_corpus)
-        docstats["doc-complexity-score"] = aparams['doc_gulpease']
-        docstats["group-similarity-score"] = round(contract_group['group-similarity-score'], 1)
-        docstats["group-complexity-score"] = round(contract_group['group-complexity-score'], 1)
+        docstats["doc-complexity-score"] = aparams["doc_gulpease"]
+        docstats["group-complexity-score"] = contract_group["gulpease"]["mean"]
+        docstats["group-complexity-std"] = math.sqrt(contract_group["gulpease"]["var"])
+        docstats["group-complexity-min"] = contract_group["gulpease"]["min"]
+        docstats["group-complexity-max"] = contract_group["gulpease"]["max"]
+
+        docstats["doc-flesch-score"] = aparams["doc_flesch"]
+        docstats["group-flesch-score"] = contract_group["flesch"]["mean"]
+        docstats["group-flesch-std"] = math.sqrt(contract_group["flesch"]["var"])
+        docstats["group-flesch-min"] = contract_group["flesch"]["min"]
+        docstats["group-flesch-max"] = contract_group["flesch"]["max"]
+
+        docstats["doc-word-count"] = aparams["word_count"]
+        docstats["group-length-mean"] = contract_group["word_count"]["mean"]
+        docstats["group-length-std"] = math.sqrt(contract_group["word_count"]["var"])
+        docstats["group-length-min"] = contract_group["word_count"]["min"]
+        docstats["group-length-max"] = contract_group["word_count"]["max"]
+
+        docstats["doc-syllable-count"] = aparams["syllable_count"]
+        docstats["group-syllable-mean"] = contract_group["syllable_count"]["mean"]
+        docstats["group-syllable-std"] = math.sqrt(contract_group["syllable_count"]["var"])
+        docstats["group-syllable-min"] = contract_group["syllable_count"]["min"]
+        docstats["group-syllable-max"] = contract_group["syllable_count"]["max"]
+
+        corpus_stats = statistics.CorpusStatistics(self.agreement_corpus)
+        docstats["doc-similarity-score"] = corpus_stats.calculate_similarity(doc)['similarity']['mean']
+        docstats["group-similarity-score"] = contract_group["similarity"]["mean"]
+        docstats["group-similarity-std"] = math.sqrt(contract_group["similarity"]["var"])
+        docstats["group-similarity-min"] = contract_group["similarity"]["min"]
+        docstats["group-similarity-max"] = contract_group["similarity"]["max"]
 
         provisionstats = {}
         print("scroll through tupleized to generate provisionstats")
@@ -665,39 +670,45 @@ class Alignment(object):
             provision_name = get_provision_name_from_file(_type, dashed=True)
             provision_group_info = self.datastore.get_provision_group(provision_mach_name)
             if provision_group_info is not None:
-                # TODO: need to put the values below into the dict
-                prov_complexity_score = astats.calculate_complexity(_block)
-                prov_similarity_score = astats.calculate_similarity(_block, self.training_corpus)
-                prov_complexity_avg = round(provision_group_info['prov-complexity-avg'], 1)
-                prov_similarity_avg = round(provision_group_info['prov-similarity-avg'], 1)
+                pstats = statistics.ProvisionStatistics(provision_mach_name)
                 provisionstats[provision_name] = {
                     'provision-readable' : provision_name,
                     'provision-description' : provision.get_description(provision_mach_name),
-                    'consensus-percentage' : astats.get_consensus(self.agreement_corpus, _type),
-                    "prov-similarity-score" : astats.calculate_similarity(_block, self.training_corpus), # needs works!
-                    "prov-similarity-avg" : round(provision_group_info['prov-similarity-avg'], 1), # get this from provision_group_info
-                    "prov-simplicity-score" : astats.calculate_complexity(_block), # computed on the fly
-                    "prov-simplicity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
-                    "prov-complexity-score" : astats.calculate_complexity(_block), # computed on the fly
-                    "prov-complexity-avg" : round(provision_group_info['prov-complexity-avg'], 1), # get this from provision_group_info
-                    "contractwiser-score" : self.compute_score(prov_similarity_score, prov_similarity_avg, prov_complexity_score, prov_complexity_avg),#round(100, 1),
-                    #"provision-tag" : "some-label", # computed on the fly
+                    'consensus-percentage' : statistics.get_consensus(self.agreement_corpus, _type),
+                    "prov-similarity-score" : pstats.calculate_similarity(_block), 
+                    "prov-gulpease" : astats.get_gulpease(provision_mach_name),
+                    "prov-flesch" : astats.get_flesch(provision_mach_name),
+                    "prov-word-count" : astats.get_word_count(provision_mach_name),
+                    "prov-syllable-count" : astats.get_syllable_count(provision_mach_name),
+                    "contractwiser-score" : 70.0,
+                    "provision-tag" : "Placeholder for information.",
                 }
-            else:
-                pass 
-                #print("did not find provision_group for %s" % provision_mach_name)
-                # TODO: You may want to log an error here, 
-                # or handle more elegantly provisions that have been sanitized. 
-                # ie: In some cases, provision_group_info == ""
-
+                try:
+                    del provision_group_info['_id']
+                except KeyError:
+                    pass
+                provisionstats[provision_name].update(provision_group_info)
+                
         return (docstats, provisionstats)
+
+    def insert_entity_markup(self, text):
+        """ :text: is a list of strings """ 
+        result_text = []
+        for paragraph in text:
+            for entity in self.entity_dict:
+                for search_text in entity['text']:
+                    #TODO: replace with spans for theming
+                    #replace_text = "<span>" + entity['text'] + "</span>"
+                    replace_text = "<u>" + search_text + "</u>"
+                    paragraph = paragraph.replace(search_text, replace_text)
+            result_text.append(paragraph)
+        return result_text
 
     def get_detail(self, tupleized, redline=False):
         (docstats, provisionstats) = self.calc_provisionstats(tupleized)
         self.set_thresholds(provisionstats)
 
-        doc = [e[0] for e in tupleized]
-        doc = " ".join(doc)
+        doc = " ".join([e[0] for e in tupleized])
 
         from statistics import CorpusStatistics
         cstats = CorpusStatistics(self.agreement_corpus)
@@ -710,29 +721,20 @@ class Alignment(object):
         self.tag_dict.append(newtag)
 
         confidential_info = [_block for (_block, _type) in tupleized if "confidential_information" in _type]
+        confidential_info = self.insert_entity_markup(confidential_info)
+        
         time_period = [_block for (_block, _type) in tupleized if "time_period" in _type]
+        time_period = self.insert_entity_markup(time_period)
 
         provisions_found = set([_type.replace("train/train_","") for (_block, _type) in tupleized])
         provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
         missing = list(set(provisions_expected) - set(provisions_found))
-
-        #obs = []
-        #if docstats["doc-complexity-score"] - docstats["group-complexity-score"] > 0:
-        #    obs = ["Above the typical nondisclosure."]
-        #else:
-        #    obs = ["Below the typical nondisclosure."]
 
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
             'agreement_type' : self.schema.get_agreement_type(), 
             'text-compare-count' : len(self.agreement_corpus.fileids()), 
-            'doc-similarity-score' : docstats["doc-similarity-score"],  
-            'doc-complexity-score' : docstats["doc-complexity-score"],
-            'doc-simplicity-score' : docstats["doc-complexity-score"],
-            'group-similarity-score' : docstats["group-similarity-score"], 
-            'group-complexity-score' : docstats["group-complexity-score"], 
-            'group-simplicity-score' : docstats["group-complexity-score"], 
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
             'complexity-threshold' : self.thresholds["complexity"],
             'tags' : self.tag_dict,
@@ -743,7 +745,7 @@ class Alignment(object):
                 "missing-provisions" : missing,
             }, 
         }
-
+        document['mainDoc'].update(docstats)
         document['provisions'] = provisionstats
         #document['concepts'] = self.get_concept_detail()
         document['concepts'] = {}
@@ -793,9 +795,11 @@ def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     corpus = build_corpus()
     doc = corpus.raw(filename)
     print("tokenize raw text into sentences.")
-    toks = a.tokenize(doc)
+    paras = a.tokenize(doc)
     print("alignment...")
-    result = a.align(toks)
+    paras = a.simplify(paras)
+    result = a.align(paras)
+
     print("check on the markup")
     document = a.get_detail(result, redline=True)
     import json
