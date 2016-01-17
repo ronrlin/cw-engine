@@ -118,7 +118,7 @@ def create_contract_group_db():
    print("Obtaining all known agreement types from ./schema.")
    agreement_types = [f.replace(".ini", "") for f in os.listdir("./schema")]
    for thistype in agreement_types:
-      collection.insert_one({ 'agreement_type' : thistype, 'group-complexity-score' : 0, 'group-similarity-score' : 0 })
+      collection.insert_one({ 'agreement_type' : thistype })
    print("created 'contract_group' collection...")
    client.close()
 
@@ -149,7 +149,7 @@ def create_provision_group_db():
    for provision in provisions_all:
       provision_name = provision[0]
       provision_file = provision[1]
-      info = { 'provision_name' : provision_name, 'prov-similarity-avg' : 0, 'prov-complexity-avg' : 0 }
+      info = { 'provision_name' : provision_name }
       collection.insert_one(info)
       print("created a provision_group for %s " % provision_name)
 
