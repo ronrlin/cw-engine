@@ -375,7 +375,7 @@ class Alignment(object):
         _similarity_weight = 0.30
         _complexity_weight = 0.22
         _variability_weight = 0.25
-        weights = np.array(list(_expected_weight, _consensus_weight, _similarity_weight, _complexity_weight, _variability_weight))
+        weights = np.array([_expected_weight, _consensus_weight, _similarity_weight, _complexity_weight, _variability_weight])
 
         # Linear Regression Model to output a Redline Decision
         # Logic for redline
