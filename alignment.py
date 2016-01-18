@@ -47,12 +47,6 @@ class Alignment(object):
         self.tag_dict = None
         self.entity_dict = None
         self.raw_content = None
-        self.thresholds = {
-            "complexity" : 0,
-            "similarity" : 0,
-            "consensus" : 0,
-            "cw" : 0,
-        }
         provisions = None
 
         if (not all):
@@ -403,23 +397,6 @@ class Alignment(object):
 
         #########################
 
-    def set_thresholds(self, provisionstats):
-        """ Function creates a dictionary of thresholds. """
-
-        #complex_stats = np.array([stats["prov-complexity-score"] for (prov_name, stats) in provisionstats.iteritems()])
-        #similar_stats = np.array([stats["prov-similarity-score"] for (prov_name, stats) in provisionstats.iteritems()])
-        #cw_stats = np.array([stats["contractwiser-score"] for (prov_name, stats) in provisionstats.iteritems()])
-        #consensus_stats = np.array([stats["consensus-percentage"] for (prov_name, stats) in provisionstats.iteritems()])
-        #np.nanmean(complex_stats, axis=1)
-        thresholds = {
-            "complexity" : 50,
-            "similarity" : 50,
-            "cw" : 50,
-            "consensus" : 50,
-        }
-        self.thresholds = thresholds
-        return
-
     def build_entities_dict(self, tupleized):
         entities = self.schema.get_entities()
         output = []
@@ -700,7 +677,6 @@ class Alignment(object):
 
     def get_detail(self, tupleized, redline=False):
         (docstats, provisionstats) = self.calc_provisionstats(tupleized)
-        self.set_thresholds(provisionstats)
 
         doc = " ".join([e[0] for e in tupleized])
 
@@ -713,7 +689,7 @@ class Alignment(object):
         newtag["category"] = ", ".join(similar_files)
         newtag["text"] = get_tag_text(newtag["type"])
         newtag["reference-info"] = ""
-        self.tag_dict.append(newtag)
+        #self.tag_dict.append(newtag)
 
         confidential_info = [_block for (_block, _type) in tupleized if "confidential_information" in _type]
         confidential_info = self.insert_entity_markup(confidential_info)
