@@ -446,7 +446,7 @@ class Alignment(object):
             result['category'] = k
             result['text'] = globalnerz[k]
             result['reference-info'] = ''
-            #output.append(result)
+            output.append(result)
 
         #somehow check the length? 
         for tag in entities:
@@ -668,9 +668,7 @@ class Alignment(object):
         for paragraph in text:
             for entity in self.entity_dict:
                 for search_text in entity['text']:
-                    #TODO: replace with spans for theming
-                    #replace_text = "<span>" + entity['text'] + "</span>"
-                    replace_text = "<u>" + search_text + "</u>"
+                    replace_text = "<span class='entity'>" + search_text + "</span>"
                     paragraph = paragraph.replace(search_text, replace_text)
             result_text.append(paragraph)
         return result_text
