@@ -24,7 +24,7 @@ DATA_PATH = os.path.join(BASE_PATH, "data/")
 
 COUNT_VECT = 1
 TFIDF_VECT = 2
-staticMode = False
+DICT_VECT = 3
 
 """
 Alignment describes the process by which agreements of the same kind of are compared
@@ -60,12 +60,8 @@ class Alignment(object):
         training_file_names = [p[1] for p in provisions]
         #provision_names = [p[0] for p in provisions]
 
-        import time
-        start_time = time.time()
         self.training_corpus = PlaintextCorpusReader(BASE_PATH, training_file_names)
-        end_time = time.time()
         print("Corpus is loading %s files" % str(len(self.training_corpus.fileids())))
-        print("Time to load Plaintext training corpus is %s seconds" % (end_time - start_time))
 
         from helper import WiserDatabase
         self.datastore = WiserDatabase()
@@ -79,63 +75,28 @@ class Alignment(object):
         min_df is param to CV
 
         """
-        if (vectorizer == COUNT_VECT): 
+        if vectorizer == COUNT_VECT: 
             self.vectorizer = CountVectorizer(input='content', stop_words=None, ngram_range=(1,3))
-            self.vectorizer2 = CountVectorizer(input='content', stop_words=None, ngram_range=(1,3))
-        elif (vectorizer == TFIDF_VECT):
+        elif vectorizer == TFIDF_VECT:
             self.vectorizer = TfidfVectorizer(input='content', stop_words=None, max_df=1.0, min_df=1, ngram_range=(1,3))
-            self.vectorizer2 = TfidfVectorizer(input='content', stop_words=None, max_df=1.0, min_df=1, ngram_range=(1,3))
+        #elif vectorizer == DICT_VECT:
+        #    self.vectorizer = DictVectorizer(sparse=True)
 
         # Try using BlanklineTokenizer
-        start_time = time.time()
         from nltk.tokenize import BlanklineTokenizer
         tokenizer = BlanklineTokenizer()
-        target2 = []
-        train_sents2 = []
+        target = []
+        train_sents = []
         for fileid in self.training_corpus.fileids():
             doc = self.training_corpus.raw(fileid)
             doc = tokenizer.tokenize(doc)
-            target2 += [fileid] * len(doc)
-            train_sents2 += doc
-        end_time = time.time()
-        print("Time to use blankline tokenizer on sentences of training texts is %s seconds" % (end_time - start_time))        
+            target += [fileid] * len(doc)
+            train_sent += doc
 
-        start_time = time.time()
-        train_vec2 = self.vectorizer2.fit_transform(train_sents2)
-        end_time = time.time()
-        print("Time to fit/transform vector is %s seconds" % (end_time - start_time))
-
-        # TODO: Some of the sents() are really small.  
-        start_time = time.time()
-        train_sents = list(' '.join(s) for s in self.training_corpus.sents())
-        end_time = time.time()
-        print("Time to load join on sentences of training texts is %s seconds" % (end_time - start_time))
-
-        start_time = time.time()
         train_vec = self.vectorizer.fit_transform(train_sents)
-        end_time = time.time()
-        print("Time to fit/transform vector is %s seconds" % (end_time - start_time))
-
-        start_time = time.time()
-        target = list()
-        for tfile in self.training_corpus.fileids():
-            for tpara in self.training_corpus.sents(tfile):  
-                # TODO: We should really assemble the train_vec here, and maybe combine 
-                # short sentences or something like that!! 
-                res = [fi for (name, fi) in provisions if (fi==tfile)]
-                target.append(res[0])
-        end_time = time.time()
-        print("Time to assemble a target vector is %s seconds" % (end_time - start_time))
-
-        start_time = time.time()
         self.cll = svm.LinearSVC(class_weight='auto')
         self.cll.fit(train_vec, target)
-
-        self.cll2 = svm.LinearSVC(class_weight='auto')
-        self.cll2.fit(train_vec2, target2)
-        end_time = time.time()
-        print("Time to build classifier and fit is %s seconds" % (end_time - start_time))
-        print("\nReady for alignment!")
+        print("Ready for alignment!")
 
     def simplify(self, paras):
         """ Function takes a list of strings, joins 'short' strings with others. """
@@ -153,16 +114,11 @@ class Alignment(object):
         return paras
 
     # TODO: REMOVE VERSION from aligncore  --- it just uses a diff't tokenization scheme. use blankline tokenizer
-    def aligncore(self, content, version=1):
+    def aligncore(self, content, version=2):
         tupleized = []
-        if version == 1:
-            test_vec = self.vectorizer.transform(content)
-            results = self.cll.predict(test_vec)
-            tupleized = list(zip(content, list(results)))
-        elif version == 2:
-            test_vec = self.vectorizer2.transform(content)
-            results = self.cll2.predict(test_vec)
-            tupleized = list(zip(content, list(results)))
+        test_vec = self.vectorizer.transform(content)
+        results = self.cll.predict(test_vec)
+        tupleized = list(zip(content, list(results)))
         return tupleized
 
     def align(self, content, version=1):
@@ -296,7 +252,7 @@ class Alignment(object):
         for (_block, _type) in tupleized:
             text = _block
             if not _type:
-                text = "<p><div>" + text + "</div></p>"
+                text = "<div><p>" + text + "</p></div>"
             else: 
                 provision_name = get_provision_name_from_file(_type, dashed=True)
                 if provision_name in provisionstats.keys():
@@ -415,9 +371,10 @@ class Alignment(object):
                 # strip out values from the NER which we know to be bad
                 for values in globalnerz[k]:
                     if k == "ORGANIZATION":
+                        pass
                         # list of strings that are gonna get stripped away
-                        discard = ["the State of California", "State of California","Third Parties", "Residual Information", "Disclosure of Confidential Information", "Disclosing Party to Receiving Party", "Confidential Information to Receiving Party","Disclosing Party", "Receiving Party","Parties", "Company", "Confidential Information", "USA", "Discloser's Confidential Information"]
-                        globalnerz[k] = [x for x in globalnerz[k] if x not in discard] 
+                        #discard = ["the State of California", "State of California","Third Parties", "Residual Information", "Disclosure of Confidential Information", "Disclosing Party to Receiving Party", "Confidential Information to Receiving Party","Disclosing Party", "Receiving Party","Parties", "Company", "Confidential Information", "USA", "Discloser's Confidential Information"]
+                        #globalnerz[k] = [x for x in globalnerz[k] if x not in discard] 
 
                     elif k == "PERSON":
                         pass
