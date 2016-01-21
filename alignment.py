@@ -91,7 +91,7 @@ class Alignment(object):
             doc = self.training_corpus.raw(fileid)
             doc = tokenizer.tokenize(doc)
             target += [fileid] * len(doc)
-            train_sent += doc
+            train_sents += doc
 
         train_vec = self.vectorizer.fit_transform(train_sents)
         self.cll = svm.LinearSVC(class_weight='auto')
