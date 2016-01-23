@@ -298,42 +298,6 @@ class AgreementStatistics(object):
 		self.words = np.array([len(word_tokenize(_block)) for _block, _type in newtup])
 		return
 
-	#def anamolous(self):
-	#	value_matrix = [gulpease, syllables, words]
-	#	datastore = WiserDatabase()
-	#	gulpease_mean = np.array([datastore.get_provision_group(feature)['prov-complexity-avg'] for feature in feature_names])
-	#	gulpease_var = np.array([datastore.get_provision_group(feature)['prov-complexity-var'] for feature in feature_names])
-	#	gulpease_max = np.array([datastore.get_provision_group(feature)['prov-complexity-max'] for feature in feature_names])
-	#	gulpease_deviations = (gulpease - gulpease_mean) / np.sqrt(gulpease_var)
-	#	print("gulpease_deviations")
-	#	print(gulpease_deviations)
-	#	syllable_mean = [datastore.get_provision_group(feature)['prov-syllable-avg'] for feature in feature_names]
-	#	print("syllable_mean")
-	#	print(syllable_mean)
-	#	syllable_var = [datastore.get_provision_group(feature)['prov-syllable-var'] for feature in feature_names]
-	# print("syllable_var")
-	# print(syllable_var)
-	# syllable_max = [datastore.get_provision_group(feature)['prov-syllable-max'] for feature in feature_names]
-	# syllable_deviations = (np.array(syllables) - np.array(syllable_mean)) / np.sqrt(np.array(syllable_var))
-	# print("syllable_deviations")
-	# print(syllable_deviations)
-	# word_mean = np.array([datastore.get_provision_group(feature)['prov-length-avg'] for feature in feature_names])
-	# print("word_mean")
-	# print(word_mean)
-	# word_var = np.array([datastore.get_provision_group(feature)['prov-length-var'] for feature in feature_names])
-	# print("word_var")
-	# print(word_var)
-	# word_max = np.array([datastore.get_provision_group(feature)['prov-length-max'] for feature in feature_names])
-	# word_deviations = (words - word_mean) / np.sqrt(word_var)
-	# print("word_deviations")
-	# print(word_deviations)
-
-	# self._feature_names = feature_names
-	# self._transformed = np.array([gulpease_deviations, syllable_deviations, word_deviations])
-	# names = np.array(feature_names)
-	# print(names[word_deviations > 2])
-		#matrix.mean(axis=0)
-
 	def get_gulpease(self, _type):
 		col_index = self._feature_names.index(_type)
 		return self.gulpease[col_index]
@@ -375,27 +339,26 @@ class AgreementStatistics(object):
 				parameters[_type.replace("train/train_", "") + "_flesch"] = calculate_flesch(_block)
 		return parameters
 
-	#def calculate_complexity(self, text):
-	#	""" 
-	#	Function that computes the Gulpease score.
-	#	:param text: string 
-	#	"""
-	#	return calculate_gulpease(text)
+	def score(self, doc_gulpease, doc_flesch, doc_similarity, data):
+		#doc_word_count, doc_syllable_count
+		#_weights = [0.5, 0.5]
+		_weights = []
+		_score_elements = [] 
 
-	#def calculate_similarity(self, text, corpus):
-	#	""" 
-	#	This SHOULD compare a given text to a reference corpus.
-	#	:param text: string of text
-	#	:param b: string of text
-	#	"""
-	#	docs = [corpus.raw(fileid) for fileid in corpus.fileids()]
-	#	docs.append(text)
-	#	# vectorize the docs in the corpus
-	#	vect = TfidfVectorizer(min_df=1)
-	#	tfidf = vect.fit_transform(docs)
-	#	matrix = (tfidf * tfidf.T).A
-	#	similarity_avg = (sum(matrix[0]) / len(matrix[0])) * 100
-	#	return round(similarity_avg, 1)
+		_weights.append(0.1)
+		gulpease = rescale(doc_gulpease, data["gulpease"]["max"], data["gulpease"]["min"])
+		_score_elements.append(gulpease)
+
+		_weights.append(0.2)
+		flesch = rescale(doc_flesch, data["flesch"]["max"], data["flesch"]["min"])
+		_score_elements.append(flesch)
+
+		_weights.append(0.7)
+		similarity = rescale(doc_similarity, data["similarity"]["max"], data["similarity"]["min"])
+		_score_elements.append(similarity)
+
+		_score = np.dot(_weights, _score_elements)
+		return _score
 
 def calculate_gulpease(text):
 	character_count = len(text)
@@ -445,6 +408,13 @@ def get_consensus(corpus, provision_type):
 	else:
 		# TODO: error condition or assert _something_
 		return 0
+
+def rescale(ovalue, omax, omin):
+	""" rescale any values to a new value between 0 and 1 """
+	return (ovalue - omin) / (omax - omin)
+
+#def calculate_score(doc_gulpease, doc_flesch, doc_similarity, ci_gulpease, ):
+
 
 def compute_classified_stats():
 	""" 
@@ -532,6 +502,7 @@ def compute_curated_info():
 		for provision in provisions:
 			stats = {}
 			stats['gulpease'] = calculate_gulpease(provision['text'])
+			stats['flesch'] = calculate_flesch(provision['text'])
 			stats['syllables'] = count_syllables_in_text(provision['text'])
 			datastore.update_curated(provision['_id'], stats)
 
