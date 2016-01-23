@@ -276,6 +276,7 @@ class Alignment(object):
                         _expected = _type in reqs
                         decision = self.redline_decision(provisionstats[provision_name], _expected)
                         if decision:
+                            print("decision not redline.")
                             text = self.get_alt_text(_type, text, inc[_type])
                             #text = self.get_new_alt_text(_type, text, inc[_type])
                         else: 
@@ -590,6 +591,8 @@ class Alignment(object):
         docstats["group-similarity-min"] = contract_group["similarity"]["min"]
         docstats["group-similarity-max"] = contract_group["similarity"]["max"]
 
+        docstats["contractwiser-score2"] = astats.score(docstats["doc-complexity-score"], docstats["doc-flesch-score"], docstats["doc-similarity-score"], contract_group)
+
         provisionstats = {}
         print("scroll through tupleized to generate provisionstats")
         for (_block, _type) in tupleized:
@@ -615,6 +618,7 @@ class Alignment(object):
                     del provision_group_info['_id']
                 except KeyError:
                     pass
+                # append the provision_group_info to provisionstats
                 provisionstats[provision_name].update(provision_group_info)
                 
         return (docstats, provisionstats)
