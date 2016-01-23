@@ -173,8 +173,8 @@ def handle_redline(contract_id=None):
 	# Start alignment
 	aligner = Alignment(schema=schema, vectorizer=2, all=True)
 	paras = aligner.tokenize(contract['text'])
-	aligned_provisions = aligner.align(paras, version=2)
 	paras = aligner.simplify(paras)
+	aligned_provisions = aligner.align(paras, version=2)
 	detail = aligner.get_detail(aligned_provisions, redline=True)
 	# Create the JSON response to the browser
 	return json.dumps(detail)
