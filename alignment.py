@@ -252,7 +252,7 @@ class Alignment(object):
         for (_block, _type) in tupleized:
             text = _block
             if not _type:
-                text = "<div><p>" + text + "</p></div>"
+                text = "<div>" + text + "</div>"
             else: 
                 provision_name = get_provision_name_from_file(_type, dashed=True)
                 if provision_name in provisionstats.keys():
@@ -282,22 +282,25 @@ class Alignment(object):
                         else: 
                             print("decision made to not redline.")
                             text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-                            text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
                     else:
                         text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-                        text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
                 else: 
                     #TODO: this can be consolidated with the case "if not _type" case 
                     text = "<div id='provision-" + get_provision_name_from_file(_type, True) + "-" + str(inc[_type]) + "' class='provision " + get_provision_name_from_file(_type, True) + "'>" + text + "</div>"
-                    text = "<p>" + text + "</p>" #TODO: is the p tag necessary here?
 
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
         return " ".join(_markup_list)
 
     def redline_decision(self, stats, expected):
+        """ Uses smarts to decide if a provision should be redlined or not. 
+
+        param :stats: is a dict that corresponds to a provision 
+        param :expected: is a boolean corresponding to 
+        """ 
+        provision_name = stats["provision-readable"]
         _consensus = stats["consensus-percentage"]
 
         sim_score = stats["prov-similarity-score"]
