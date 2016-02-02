@@ -301,19 +301,20 @@ class Alignment(object):
 
             _markup_list.append(text)
             inc[_type] = inc[_type] + 1
-
-        # append missing provisions
-        provisions_found = set([_type.replace("train/train_","") for (_block, _type) in tupleized])
-        provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
-        missing = list(set(provisions_expected) - set(provisions_found))
         
-        if missing:
-            for missing_provision in missing:
-                text = self.get_alt_text("train/train_" + missing_provision, "")
-                # TODO: use insert() to a position and have smarter logic eventually
-                #_markup_list.append(text)
-                print("inserted missing provision into redline.")
-                _markup_list.insert(len(tupleized) - 3, text)
+        if redline: 
+            # append missing provisions
+            provisions_found = set([_type.replace("train/train_","") for (_block, _type) in tupleized])
+            provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
+            missing = list(set(provisions_expected) - set(provisions_found))
+
+            if missing:
+                for missing_provision in missing:
+                    text = self.get_alt_text("train/train_" + missing_provision, "")
+                    # TODO: use insert() to a position and have smarter logic eventually
+                    #_markup_list.append(text)
+                    print("inserted missing provision into redline.")
+                    _markup_list.insert(len(tupleized) - 3, text)
 
         return " ".join(_markup_list)
 
