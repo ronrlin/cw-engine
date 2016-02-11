@@ -215,7 +215,7 @@ class Alignment(object):
             elif provision_type.replace("train/train_", "") == "integration":
                 new_text = """This Agreement supersedes in full all prior discussions and agreements between the Parties relating to the Confidential Information, constitutes the entire agreement between the Parties relating to the Confidential Information, and may be amended, modified or supplemented only by a written document signed by an authorized representative of each Party. """
             elif provision_type.replace("train/train_", "") == "time_period":
-                new_text = """This Agreement shall remain in effect, unless sooner terminated by mutual agreement, for a period of (n) years from the "Effective Date." """
+                new_text = """This Agreement shall remain in effect, unless sooner terminated by mutual agreement, for a period of [n years] from the "Effective Date." """
             elif provision_type.replace("train/train_", "") == "nonconfidential_information":
                 new_text = """Confidential Information shall not include any information that:\n
     (a) is now or thereafter becomes generally known or available to the public, through no act or omission on the part of the receiving party;
@@ -485,7 +485,11 @@ class Alignment(object):
     def build_tag_dict(self, tupleized):
         tags = self.schema.get_tags()
         tupled = []
+        
+        #remove output
         output = []
+
+        result = {}
 
         for tag in tags:
             # tag is a tuple
@@ -501,7 +505,7 @@ class Alignment(object):
                     tupled.append(t)
 
             print("%s files will be loaded into tag corpus." % str(len(tupled)))   
-            result = {}
+
             if (len(tupled) > 1):
                 mapped = dict(tupled)
                 nltk_is_stupid = [ [key] for key in mapped.keys()]
@@ -514,20 +518,20 @@ class Alignment(object):
                 from classifier import AgreementVectorClassifier 
                 classifier = AgreementVectorClassifier(vectorizer, tagged_corpus)
                 classifier.fit()
-                result['type'] = tag_name
-                result['category'] = classifier.classify_data([self.raw_content])
-                result['reference-info'] = get_reference_info(tag_name, result['category']) #some id into a reference db
-                result['text'] = get_tag_text(tag_name) #TODO: this is how the tags get displayed
-                output.append(result)
-            else: # marked for removal
-                print("problem in get_tag!")
-                result['type'] = "ERROR"
-                result['category'] = ""
-                result['reference-info'] = 'ERROR' #some id into a reference db
-                result['text'] = 'ERROR' #TODO: this is how the tags get displayed
-                output.append(result)
+                #result['type'] = tag_name
+                #result['category'] = classifier.classify_data([self.raw_content])
+                #result['reference-info'] = get_reference_info(tag_name, result['category']) #some id into a reference db
+                #result['text'] = get_tag_text(tag_name) #TODO: this is how the tags get displayed
 
-        self.tag_dict = output
+                category = classifier.classify_data([self.raw_content])
+                result[tag_name] = {
+                    'category' : category,
+                    'reference-info' : self.get_reference_info(category),
+                    'text' : get_tag_text(tag_name),
+                }
+                #output.append(result)
+
+        self.tag_dict = result
         return 
 
     def compute_score(self, doc_similarity, group_similarity, doc_complexity, group_complexity):
@@ -661,31 +665,54 @@ class Alignment(object):
             result_text.append(paragraph)
         return result_text
 
+    def get_reference_info(self, tag_name):
+        if self.schema.get_agreement_type() == "nondisclosure":
+            if tag_name == "mutual":
+                return "Your agreement looks like a mutual NDA."
+            else:
+                return "Your agreement looks like a one-way NDA."
+        elif self.schema.get_agreement_type() == "commercial_lease":
+            if tag_name == "nnn_lease":
+                return "Your agreement looks like a Triple-Net Lease."
+            else:
+                return "Your agreement looks like a Gross Lease."
+        else:
+            return tag_name
+
     def get_detail(self, tupleized, redline=False):
         (docstats, provisionstats) = self.calc_provisionstats(tupleized)
 
         doc = " ".join([e[0] for e in tupleized])
 
-        from statistics import CorpusStatistics
-        cstats = CorpusStatistics(self.agreement_corpus)
+        #from statistics import CorpusStatistics
+        #cstats = CorpusStatistics(self.agreement_corpus)
         # TODO: wouldn't it be great to link a user to similar files?  YES!  Obtain urls to similar_files.
-        similar_files = list(cstats.most_similar(doc))
-        newtag = {}
-        newtag["type"] = "most_similar"
-        newtag["category"] = ", ".join(similar_files)
-        newtag["text"] = get_tag_text(newtag["type"])
-        newtag["reference-info"] = ""
+        #similar_files = list(cstats.most_similar(doc))
+        #newtag = {}
+        #newtag["type"] = "most_similar"
+        #newtag["category"] = ", ".join(similar_files)
+        #newtag["text"] = get_tag_text(newtag["type"])
+        #newtag["reference-info"] = ""
         #self.tag_dict.append(newtag)
 
-        confidential_info = [_block for (_block, _type) in tupleized if "confidential_information" in _type]
-        confidential_info = self.insert_entity_markup(confidential_info)
-        
-        time_period = [_block for (_block, _type) in tupleized if "time_period" in _type]
-        time_period = self.insert_entity_markup(time_period)
+        critical_things = self.schema.get_critical()
+        tempcrit = {}
+        for (key, title) in critical_things:
+            # check if it's a tag
+            if key in self.tag_dict:
+                tempcrit[key] = [self.tag_dict[key]["reference-info"]]
+            else:
+                info = [_block for (_block, _type) in tupleized if key in _type]
+                info = self.insert_entity_markup(info)            
+                tempcrit[key] = info
 
         provisions_found = set([_type.replace("train/train_","") for (_block, _type) in tupleized])
         provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
         missing = list(set(provisions_expected) - set(provisions_found))
+        if not missing:
+            tempcrit['missing-provisions'] = ["This agreement contains everything you'd commonly expect."]
+        else:
+            tempcrit['missing-provisions'] = missing
 
         document = dict()
         document['mainDoc'] = {
@@ -695,11 +722,7 @@ class Alignment(object):
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
             'tags' : self.tag_dict,
             'entities' : self.entity_dict,
-            'summary' : { 
-                "confidential-info" : confidential_info,
-                "time-period" : time_period,
-                "missing-provisions" : missing,
-            }, 
+            'summary' : tempcrit, 
         }
         document['mainDoc'].update(docstats)
         document['provisions'] = provisionstats
@@ -726,16 +749,6 @@ def get_tag_text(tag_name):
         return "Damages"
     else:
         return "<" + tag_name + " not found>"
-
-def get_reference_info(tag_type, tag_category):
-    """ Eventually, this should be information in a database."""
-    if tag_type == "disclosure_type":
-        if tag_category == "mutual": 
-            return """When you have to share sensitive information, a mutual NDA makes the obligations the same for both parties. """
-        else:
-            return """When you have to share sensitive information, a mutual NDA makes the obligations the same for both parties. """
-    else:
-        return "<tag not found>"
 
 def testing(filename="nda-0000-0015.txt", agreement_type="nondisclosure"):
     """ test that the class is working """

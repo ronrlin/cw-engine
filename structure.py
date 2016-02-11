@@ -41,9 +41,17 @@ class AgreementSchema(object):
 		self.version = config['general']['version']
 		self.agreement_type = config['general']['agreement_type']
 		self.provisions = config.items('provisions')
-		self.concepts = config.items('concepts')
+		#self.concepts = config.items('concepts')
 		self.tags = config.items('tags')
 		self.entities = config.items('entities')
+		self.critical = config.items('critical')
+
+	def get_critical(self):
+		"""
+		Returns a list of tuples which contain (tag_name, tag_values). 
+		:param tag_values: may contain comma-separated values. 
+		"""		
+		return self.critical
 
 	def get_entities(self):
 		"""
@@ -66,14 +74,6 @@ class AgreementSchema(object):
 		a used for bootstrapping the provision classifier. 
 		"""
 		return self.provisions
-
-	def get_concepts(self):
-		"""	
-		Returns a list of tuples which correspond to the concepts expected in this 
-		agreement type.  Tuples contain information in form of (provision_source, 
-		concepts).  'concepts might be a comma-delimited string.'
-		"""
-		return self.concepts
 
 	def get_version(self):
 		"""	
