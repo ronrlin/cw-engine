@@ -21,7 +21,7 @@ from helper import WiserDatabase
 from werkzeug import secure_filename
 
 UPLOAD_FOLDER = './dump/'
-ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'doc', 'docx', 'rtf'])
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'doc', 'docx', 'rtf', 'DOC', 'DOCX'])
 
 # Basics
 app = Flask(__name__)
@@ -120,6 +120,11 @@ def contract():
 
 				elif (".txt" in f.filename.lower()): 
 					r=requests.put(tika_url, data=output, headers={"Content-type" : "text/plain", "Accept" : "text/plain"})
+					contract_data = r.text.encode("ascii", "replace")
+					contract_data = contract_data.replace("?", " ")
+
+				elif (".tif" in f.filename.lower() or ".tiff" in f.filename.lower()):
+					r=requests.put(tika_url, data=output, headers={"Content-type" : "image/tiff", "Accept" : "text/plain"})
 					contract_data = r.text.encode("ascii", "replace")
 					contract_data = contract_data.replace("?", " ")
 			else:
