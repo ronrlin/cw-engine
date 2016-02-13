@@ -710,14 +710,14 @@ class Alignment(object):
         provisions_expected = set([provision_name for (provision_name, path) in self.schema.get_provisions()])
         missing = list(set(provisions_expected) - set(provisions_found))
         if not missing:
-            tempcrit['missing-provisions'] = ["This agreement contains everything you'd commonly expect."]
+            tempcrit['missing-provisions'] = []
         else:
             tempcrit['missing-provisions'] = missing
 
         document = dict()
         document['mainDoc'] = {
             '_body' : self.get_markup(tupleized, provisionstats, redline),
-            'agreement_type' : self.schema.get_agreement_type(), 
+            'agreement-type' : self.schema.get_agreement_type(), 
             'text-compare-count' : len(self.agreement_corpus.fileids()), 
             'contractwiser-score' : self.compute_score(docstats["doc-similarity-score"], docstats["group-similarity-score"], docstats["doc-complexity-score"], docstats["group-complexity-score"]),
             'tags' : self.tag_dict,
